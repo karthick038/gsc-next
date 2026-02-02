@@ -7,8 +7,8 @@
 echo "🚀 Starting Deployment..."
 
 # 1. Pull the latest changes from GitHub
-echo "📥 Pulling latest changes from main..."
-git pull origin main
+echo "📥 Pulling latest changes..."
+git pull origin $(git rev-parse --abbrev-ref HEAD)
 
 # 2. Install dependencies
 # Using 'npm ci' is recommended for CI environments as it's faster and uses package-lock.json strictly
