@@ -78,7 +78,7 @@ export function DashboardStats() {
                         </h3>
                         <p className="text-sm text-muted-foreground">
                             {indexingStatus === "NOT_VERIFIED" && (
-                            "Please upload a valid service account JSON file to connect your website."
+                            "Please upload a valid service account JSON file to connect your website. "
                             )}
                         </p>
                     </div>
