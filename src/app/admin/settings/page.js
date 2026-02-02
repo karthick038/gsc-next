@@ -70,7 +70,7 @@ export default function AdminSettingsPage() {
 
         // Basic validation
         if (!file.type.startsWith("image/")) {
-            setMessage({ type: "error", text: "Please upload an image file" });
+            setMessage({ type: "error", text: "Please upload an image files" });
             return;
         }
 
