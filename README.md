@@ -51,5 +51,24 @@ A modern, high-performance dashboard built with Next.js and MongoDB for managing
 - **Secret Rotation**: If you accidentally commit a secret, rotate it immediately in the provider (MongoDB Atlas, Google Cloud).
 - **Safe Pushes**: Use `git status` before pushing to ensure no sensitive files are staged.
 
+## 🚀 CI/CD Deployment
+This repository is configured with GitHub Actions for automatic deployment via SSH.
+
+### GitHub Secrets Configuration
+To enable automatic deployments, add the following secrets to your GitHub repository (**Settings > Secrets and variables > Actions**):
+
+| Secret Name | Description |
+| :--- | :--- |
+| `SSH_HOST` | The IP address or hostname of your production server. |
+| `SSH_USERNAME` | The SSH username (e.g., `ubuntu`, `root`). |
+| `SSH_PRIVATE_KEY` | Your SSH private key (content of `id_rsa`). |
+| `SSH_PORT` | The SSH port (usually `22`). |
+| `DEPLOY_PATH` | The absolute path to the project on your server (e.g., `/var/www/gsc-app`). |
+
+### How it works
+1. When you push to the `main` branch, GitHub Actions triggers the deployment workflow.
+2. The runner connects to your server via SSH.
+3. It executes `deploy.sh`, which pulls the latest code, installs production dependencies, builds the app, and restarts the PM2 process.
+
 ## 📄 License
 MIT
