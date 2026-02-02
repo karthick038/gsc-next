@@ -30,6 +30,6 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           script_stop: true # Fails the workflow if deploy.sh returns non-zero code
           script: |
-            cd ${{ secrets.DEPLOY_PATH }}
+            cd /home/eduwhistle-gscsite/htdocs/gscsite.eduwhistle.com/gsc-next
             chmod +x deploy.sh
             ./deploy.sh
