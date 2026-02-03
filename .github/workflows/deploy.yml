@@ -34,4 +34,9 @@ jobs:
           debug: true
           script_stop: true
           script: |
-            echo "CONNECTED"
+            whoami
+            pwd
+            cd /home/eduwhistle-gscsite/htdocs/gscsite.eduwhistle.com/gsc-next
+            ls -la
+            chmod +x deploy.sh
+            ./deploy.sh
