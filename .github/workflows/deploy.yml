@@ -18,7 +18,6 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
-          fingerprint: ${{ secrets.SSH_FINGERPRINT }}
           timeout: 60s
           command_timeout: 15m
           debug: true
