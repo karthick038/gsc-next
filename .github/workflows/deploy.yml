@@ -30,12 +30,8 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           timeout: 60s
           command_timeout: 10m
+          request_pty: true
           debug: true
           script_stop: true
           script: |
-            whoami
-            pwd
-            cd /home/eduwhistle-gscsite/htdocs/gscsite.eduwhistle.com/gsc-next
-            ls -la
-            chmod +x deploy.sh
-            ./deploy.sh
+            echo "CONNECTED"
