@@ -23,56 +23,32 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
           timeout: 60s
-          command_timeout: 10m
+          command_timeout: 15m
           debug: true
+          request_pty: true
           script_stop: true
           script: |
-            echo "=============================="
             echo "✅ Connected to server"
-            echo "=============================="
             
             echo "🔹 Current user:"
             whoami
             
-            echo "🔹 Home directory:"
-            echo $HOME
-            
-            echo "🔹 Current working directory:"
+            echo "🔹 Current directory:"
             pwd
             
-            echo "🔹 Environment variables:"
-            env
-            
             echo "🔹 Listing home directory:"
-            ls -la $HOME
-            
-            echo "🔹 Checking .ssh folder and keys:"
-            ls -la $HOME/.ssh
-            echo "Contents of authorized_keys:"
-            cat $HOME/.ssh/authorized_keys
+            ls -la
             
             echo "🔹 Changing to project directory..."
             cd /home/gsc-user/htdocs/gscsite.eduwhistle.com/gsc-next || { echo "❌ Failed to cd to project directory"; exit 1; }
             
-            echo "🔹 Current project directory:"
-            pwd
+            echo "🔹 Listing project directory:"
             ls -la
             
-            echo "🔹 User info:"
-            id
-            
-            echo "🔹 Node version:"
-            node -v || echo "❌ Node not found"
-            
-            echo "🔹 NPM version:"
-            npm -v || echo "❌ NPM not found"
-            
-            echo "🔹 Making deploy.sh executable..."
+            echo "🔹 Making deploy.sh executable"
             chmod +x deploy.sh || { echo "❌ Failed to chmod deploy.sh"; exit 1; }
             
-            echo "🔹 Running deploy.sh..."
+            echo "🔹 Running deploy.sh"
             ./deploy.sh || { echo "❌ deploy.sh failed"; exit 1; }
             
-            echo "=============================="
-            echo "✅ Deployment finished"
-            echo "=============================="
+            echo "✅ Deployment script finished"

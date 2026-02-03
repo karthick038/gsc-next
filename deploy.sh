@@ -1,32 +1,44 @@
 #!/bin/bash
 
-# Configuration
-# Note: These are executed on your remote server.
-# Ensure you are already in the project directory when this script starts (handled by GitHub Action)
-
 echo "🚀 Starting Deployment..."
 
-# 1. Pull the latest changes from GitHub
+# 1️⃣ Pull the latest changes from GitHub
 echo "📥 Pulling latest changes..."
-git pull origin $(git rev-parse --abbrev-ref HEAD)
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "❌ Not a git repository. Exiting."
+    exit 1
+fi
 
-# 2. Install dependencies
-# Using 'npm ci' is recommended for CI environments as it's faster and uses package-lock.json strictly
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+echo "🔹 Current branch: $CURRENT_BRANCH"
+
+git pull origin "$CURRENT_BRANCH" || { echo "❌ git pull failed"; exit 1; }
+
+# 2️⃣ Install dependencies
 echo "📦 Installing dependencies..."
-npm ci --production
+if ! command -v npm >/dev/null 2>&1; then
+    echo "❌ npm is not installed. Exiting."
+    exit 1
+fi
 
-# 3. Build the Next.js application
+npm ci --production || { echo "❌ npm install failed"; exit 1; }
+
+# 3️⃣ Build the Next.js application
 echo "🏗️ Building the application..."
-npm run build
+npm run build || { echo "❌ npm build failed"; exit 1; }
 
-# 4. Restart the application using PM2
-# Replace 'gsc-app' with your actual PM2 process name
+# 4️⃣ Restart PM2 process
 echo "🔄 Restarting PM2 process..."
-if pm2 show gsc-app > /dev/null; then
-    pm2 restart gsc-app
+if ! command -v pm2 >/dev/null 2>&1; then
+    echo "❌ pm2 is not installed. Exiting."
+    exit 1
+fi
+
+if pm2 show gsc-app >/dev/null 2>&1; then
+    pm2 restart gsc-app || { echo "❌ pm2 restart failed"; exit 1; }
 else
     echo "⚠️ PM2 process 'gsc-app' not found. Starting a new process..."
-    pm2 start npm --name "gsc-app" -- start
+    pm2 start npm --name "gsc-app" -- start || { echo "❌ pm2 start failed"; exit 1; }
 fi
 
 echo "✅ Deployment Successful!"
