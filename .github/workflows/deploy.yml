@@ -27,27 +27,52 @@ jobs:
           debug: true
           script_stop: true
           script: |
+            echo "=============================="
             echo "✅ Connected to server"
+            echo "=============================="
             
             echo "🔹 Current user:"
             whoami
             
-            echo "🔹 Current directory:"
+            echo "🔹 Home directory:"
+            echo $HOME
+            
+            echo "🔹 Current working directory:"
             pwd
             
+            echo "🔹 Environment variables:"
+            env
+            
             echo "🔹 Listing home directory:"
-            ls -la
+            ls -la $HOME
+            
+            echo "🔹 Checking .ssh folder and keys:"
+            ls -la $HOME/.ssh
+            echo "Contents of authorized_keys:"
+            cat $HOME/.ssh/authorized_keys
             
             echo "🔹 Changing to project directory..."
             cd /home/gsc-user/htdocs/gscsite.eduwhistle.com/gsc-next || { echo "❌ Failed to cd to project directory"; exit 1; }
             
-            echo "🔹 Listing project directory:"
+            echo "🔹 Current project directory:"
+            pwd
             ls -la
             
-            echo "🔹 Making deploy.sh executable"
+            echo "🔹 User info:"
+            id
+            
+            echo "🔹 Node version:"
+            node -v || echo "❌ Node not found"
+            
+            echo "🔹 NPM version:"
+            npm -v || echo "❌ NPM not found"
+            
+            echo "🔹 Making deploy.sh executable..."
             chmod +x deploy.sh || { echo "❌ Failed to chmod deploy.sh"; exit 1; }
             
-            echo "🔹 Running deploy.sh"
+            echo "🔹 Running deploy.sh..."
             ./deploy.sh || { echo "❌ deploy.sh failed"; exit 1; }
             
-            echo "✅ Deployment script finished"
+            echo "=============================="
+            echo "✅ Deployment finished"
+            echo "=============================="
