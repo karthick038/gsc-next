@@ -51,4 +51,4 @@ jobs:
             echo "Running deploy.sh"
             ./deploy.sh || { echo "❌ deploy.sh failed"; exit 1; }
             
-            echo "Deployment script finished"
+            echo " Deployment script finished"
