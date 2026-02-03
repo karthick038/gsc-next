@@ -19,7 +19,7 @@ export default function DashboardSidebar({ userEmail, signOutAction }) {
     return (
         <aside className="w-64 bg-white dark:bg-zinc-800 border-r border-gray-200 dark:border-zinc-700 flex flex-col h-full">
             <div className="p-6 border-b border-gray-200 dark:border-zinc-700">
-                <h2 className="text-xl font-bold tracking-tight">MyApp</h2>
+                <h2 className="text-xl font-bold tracking-tight">GSC Dashboard</h2>
             </div>
 
             <nav className="flex-1 p-4 space-y-2">
