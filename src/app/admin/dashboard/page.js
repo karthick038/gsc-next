@@ -405,7 +405,7 @@ export default function UserManagementPage() {
                                         <TableCell colSpan={4} className="h-64 text-center">
                                             <div className="flex flex-col items-center justify-center space-y-2">
                                                 <UserPlus className="h-10 w-10 text-zinc-100" />
-                                                <p className="text-zinc-500 font-medium"> No users found</p>
+                                                <p className="text-zinc-500 font-medium">No users found</p>
                                                 <p className="text-zinc-400 text-xs">Try adjusting your search criteria.</p>
                                             </div>
                                         </TableCell>
