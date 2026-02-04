@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 Starting Deployment..."
+echo "🚀 Starting Deployment.."
 
 # ------------------------------
 # Configuration
