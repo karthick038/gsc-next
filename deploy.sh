@@ -35,4 +35,4 @@ fi
 
 pm2 save
 
-echo "Deployment Successful!"
+echo " Deployment Successful!"
