@@ -2,14 +2,31 @@
 
 echo "🚀 Starting Deployment..."
 
+# ------------------------------
+# Configuration
+# ------------------------------
 APP_NAME="gsc-app"
 ECOSYSTEM_FILE="ecosystem.config.js"
+PROJECT_DIR="/home/eduwhistle-gscindex/htdocs/gscindex.eduwhistle.com/gsc-next"
 
-# Set production env
+# ------------------------------
+# Environment
+# ------------------------------
 export NODE_ENV=production
 export NPM_CONFIG_UNSAFE_PERM=true
 
-# Ensure git repo
+# ------------------------------
+# Navigate to project directory
+# ------------------------------
+cd $PROJECT_DIR || { echo "❌ Project directory not found: $PROJECT_DIR"; exit 1; }
+
+echo "✅ Inside project directory: $(pwd)"
+echo "🔹 Listing project files"
+ls -la
+
+# ------------------------------
+# Ensure git repository
+# ------------------------------
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     echo "❌ Not a git repository. Exiting."
     exit 1
@@ -18,25 +35,36 @@ fi
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 echo "🔹 Current branch: $CURRENT_BRANCH"
 
-# Sync code
+# ------------------------------
+# Sync code from GitHub
+# ------------------------------
 echo "📥 Syncing code with GitHub..."
 git fetch origin || exit 1
 git reset --hard origin/$CURRENT_BRANCH || exit 1
 git clean -fd || exit 1
 
-# Optional: fix permissions
-echo "🔧 Fixing project folder permissions..."
-chown -R $(whoami):$(whoami) .
+# ------------------------------
+# Clean old node_modules to avoid permission issues
+# ------------------------------
+echo "🧹 Cleaning old node_modules and package-lock.json..."
+rm -rf node_modules
+rm -rf package-lock.json
 
+# ------------------------------
 # Install dependencies
+# ------------------------------
 echo "📦 Installing dependencies..."
-npm ci --unsafe-perm || { echo "❌ npm install failed"; exit 1; }
+npm ci || { echo "❌ npm install failed"; exit 1; }
 
-# Build
+# ------------------------------
+# Build the application
+# ------------------------------
 echo "🏗️ Building the application..."
 npm run build || { echo "❌ npm build failed"; exit 1; }
 
-# PM2
+# ------------------------------
+# PM2 Setup / Restart
+# ------------------------------
 echo "🔍 Checking PM2 ecosystem file..."
 if [ ! -f "$ECOSYSTEM_FILE" ]; then
     echo "⚠️ ecosystem.config.js not found. Creating one..."
@@ -58,12 +86,17 @@ module.exports = {
   ]
 };
 EOF
+    echo "🚀 Starting app with PM2..."
     pm2 start $ECOSYSTEM_FILE || { echo "❌ PM2 start failed"; exit 1; }
 else
+    echo "✅ ecosystem.config.js exists"
+    echo "🔄 Restarting app with PM2..."
     pm2 restart $ECOSYSTEM_FILE || pm2 start $ECOSYSTEM_FILE || { echo "❌ PM2 restart/start failed"; exit 1; }
 fi
 
-# Save PM2
+# ------------------------------
+# Save PM2 process list
+# ------------------------------
 pm2 save
 
 echo "🎉 Deployment Successful!"
