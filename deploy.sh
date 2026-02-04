@@ -46,9 +46,9 @@ git clean -fd || exit 1
 # ------------------------------
 # Clean old node_modules to avoid permission issues
 # ------------------------------
-echo "🧹 Cleaning old node_modules and package-lock.json..."
+echo "🧹 Cleaning old build and node_modules..."
 rm -rf node_modules
-rm -rf package-lock.json
+sudo rm -rf .next
 
 # ------------------------------
 # Install dependencies
