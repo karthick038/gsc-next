@@ -416,7 +416,7 @@ export default function IndexingPage() {
             {isServiceAccountValid && (indexingStatus === "CONNECTED" || indexingStatus === "PARTIAL") && activeVerifiedSites.length > 0 && !isConnectionLoading && (
                 <div className="space-y-3">
                     <label className="text-xs font-black uppercase tracking-widest text-zinc-500 ml-1">
-                        Selected Website for Indexing
+                        Select Website for Indexing
                     </label>
                     <div className="flex flex-wrap gap-3 mt-4">
                         {activeVerifiedSites.map((site, index) => {
