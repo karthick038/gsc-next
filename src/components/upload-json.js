@@ -518,7 +518,7 @@ export default function UploadJSON() {
                             variant="ghost"
                             onClick={() => { setShowForm(false); setNewSiteUrl(""); setSelectedFile(null); setMessage(""); }}
                             disabled={isSavingAndChecking}
-                            className="font-medium"
+                            className="font-medium "
                         >
                             Cancel
                         </Button>
