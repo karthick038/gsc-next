@@ -12,7 +12,7 @@ export function ConnectionStatusBadge() {
         return (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 animate-pulse">
                 <div className="h-2 w-2 rounded-full bg-zinc-400" />
-                <span className="text-xs font-medium text-muted-foreground">Checking Connection...</span>
+                <span className="text-xs font-medium text-muted-foreground">Checking connection...</span>
             </div>
         );
     }
