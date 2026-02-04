@@ -1,16 +1,20 @@
 name: Remote SSH Deployment
+
 on:
   push:
     branches:
       - main
       - gsc-next
   workflow_dispatch:
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -24,27 +28,22 @@ jobs:
           script_stop: true
           script: |
             echo "✅ Connected to server"
-            echo "🔹 Current user:"
             whoami
-            echo "🔹 Current directory:"
             pwd
-            echo "🔹 Listing home directory:"
-            ls -la
+
             echo "🔹 Changing to project directory..."
-            cd /home/gsc-user/htdocs/gscsite.eduwhistle.com/gsc-next || {
-              echo "Failed to cd to project directory"
+            cd /home/eduwhistle-gscindex/htdocs/gscindex.eduwhistle.com/gsc-next || {
+              echo "❌ Project directory not found"
               exit 1
             }
-            echo "🔹 Listing project directory:"
+
+            echo "🔹 Listing project files"
             ls -la
+
             echo "🔹 Making deploy.sh executable"
-            chmod +x deploy.sh || {
-              echo "❌ Failed to chmod deploy.sh"
-              exit 1
-            }
+            chmod +x deploy.sh
+
             echo "🚀 Running deploy.sh"
-            ./deploy.sh || {
-              echo "❌ deploy.sh failed"
-              exit 1
-            }
-            echo "✅ Deployment script finished"
+            ./deploy.sh
+
+            echo "✅ Deployment completed successfully"
