@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀Starting Deployment.."
+echo "🚀 Starting Deployment..."
 
 # ------------------------------
 # Configuration
@@ -44,14 +44,13 @@ git reset --hard origin/$CURRENT_BRANCH || exit 1
 git clean -fd || exit 1
 
 # ------------------------------
-# Clean old node_modules to avoid permission issues
+# Clean old build and node_modules
 # ------------------------------
 echo "🧹 Cleaning old build and node_modules..."
-rm -rf node_modules
-sudo rm -rf .next
+rm -rf node_modules .next
 
 # ------------------------------
-# Install dependencies
+# Install dependencies (local, CI/CD safe)
 # ------------------------------
 echo "📦 Installing dependencies..."
 npm ci || { echo "❌ npm install failed"; exit 1; }
@@ -63,7 +62,7 @@ echo "🏗️ Building the application..."
 npm run build || { echo "❌ npm build failed"; exit 1; }
 
 # ------------------------------
-# PM2 Setup / Restart
+# PM2 Setup / Restart (CI/CD safe)
 # ------------------------------
 echo "🔍 Checking PM2 ecosystem file..."
 if [ ! -f "$ECOSYSTEM_FILE" ]; then
@@ -86,17 +85,14 @@ module.exports = {
   ]
 };
 EOF
-    echo "🚀 Starting app with PM2..."
-    pm2 start $ECOSYSTEM_FILE || { echo "❌ PM2 start failed"; exit 1; }
-else
-    echo "✅ ecosystem.config.js exists"
-    echo "🔄 Restarting app with PM2..."
-    pm2 restart $ECOSYSTEM_FILE || pm2 start $ECOSYSTEM_FILE || { echo "❌ PM2 restart/start failed"; exit 1; }
 fi
+
+echo "🚀 Starting or Restarting app with PM2..."
+npx pm2 restart $ECOSYSTEM_FILE || npx pm2 start $ECOSYSTEM_FILE || { echo "❌ PM2 start/restart failed"; exit 1; }
 
 # ------------------------------
 # Save PM2 process list
 # ------------------------------
-pm2 save
+npx pm2 save
 
 echo "🎉 Deployment Successful!"
