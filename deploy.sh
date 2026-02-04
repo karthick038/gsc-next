@@ -41,4 +41,4 @@ else
     pm2 start npm --name "gsc-app" -- start || { echo "❌ pm2 start failed"; exit 1; }
 fi
 
-echo "✅ Deployment Successful!"
+echo " Deployment Successful!"
