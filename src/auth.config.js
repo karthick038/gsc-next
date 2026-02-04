@@ -11,10 +11,8 @@ export const authConfig = {
             const isLoginPage = nextUrl.pathname === "/login";
             const isRoot = nextUrl.pathname === "/";
 
-            if (isRoot) {
-                if (isLoggedIn) return true;
-                return false; // Redirect to login
-            }
+            if (isRoot) return true;
+
             if (isLoginPage) {
                 if (isLoggedIn) {
                     const userRole = auth.user.role?.toLowerCase();
