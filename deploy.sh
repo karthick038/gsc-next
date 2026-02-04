@@ -2,6 +2,9 @@
 
 echo "🚀 Starting Deployment..."
 
+APP_NAME="gsc-app"
+ECOSYSTEM_FILE="ecosystem.config.js"
+
 # 1️⃣ Ensure git repo
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     echo "❌ Not a git repository. Exiting."
@@ -25,14 +28,42 @@ npm ci || { echo "❌ npm install failed"; exit 1; }
 echo "🏗️ Building the application..."
 npm run build || { echo "❌ npm build failed"; exit 1; }
 
-# 5️⃣ Restart PM2
-echo "🔄 Restarting PM2..."
-if pm2 show gsc-app >/dev/null 2>&1; then
-    pm2 restart gsc-app
+# 5️⃣ PM2 ecosystem file check
+echo "🔍 Checking PM2 ecosystem file..."
+
+if [ ! -f "$ECOSYSTEM_FILE" ]; then
+    echo "⚠️ ecosystem.config.js not found. Creating one..."
+
+    cat <<EOF > $ECOSYSTEM_FILE
+module.exports = {
+  apps: [
+    {
+      name: "$APP_NAME",
+      script: "npm",
+      args: "start",
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      env: {
+        NODE_ENV: "production",
+        PORT: 3015
+      }
+    }
+  ]
+};
+EOF
+
+    echo "✅ ecosystem.config.js created"
+    echo "🚀 Starting app with PM2..."
+    pm2 start $ECOSYSTEM_FILE
+
 else
-    pm2 start npm --name "gsc-app" -- start
+    echo "✅ ecosystem.config.js exists"
+    echo "🔄 Restarting app with PM2..."
+    pm2 restart $ECOSYSTEM_FILE
 fi
 
+# 6️⃣ Save PM2 state
 pm2 save
 
-echo "Deployment Successful!"
+echo "🎉 Deployment Successful!"
