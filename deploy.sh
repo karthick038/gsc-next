@@ -1,98 +1,38 @@
 #!/bin/bash
+set -e
 
-echo "🚀 Starting Deployment..."
+echo "🚀 Starting Next.js deployment..."
 
-# ------------------------------
-# Configuration
-# ------------------------------
-APP_NAME="gsc-app"
-ECOSYSTEM_FILE="ecosystem.config.js"
-PROJECT_DIR="/home/eduwhistle-gscindex/htdocs/gscindex.eduwhistle.com/gsc-next"
+APP_DIR="/home/eduwhistle-gscanalytics/htdocs/gscanalytics.eduwhistle.com"
+BRANCH="gsc-next"
+PM2_APP="gsc-next"
+PORT="3021"
 
-# ------------------------------
-# Environment
-# ------------------------------
-export NODE_ENV=production
-export NPM_CONFIG_UNSAFE_PERM=true
+cd "$APP_DIR"
 
-# ------------------------------
-# Navigate to project directory
-# ------------------------------
-cd $PROJECT_DIR || { echo "❌ Project directory not found: $PROJECT_DIR"; exit 1; }
+# Ensure git trust
+git config --global --add safe.directory "$APP_DIR"
 
-echo "✅ Inside project directory: $(pwd)"
-echo "🔹 Listing project files"
-ls -la
+echo "📌 Current commit:"
+git log -1 --oneline || true
 
-# ------------------------------
-# Ensure git repository
-# ------------------------------
-if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    echo "❌ Not a git repository. Exiting."
-    exit 1
-fi
+echo "⬇️ Fetching latest code..."
+git fetch origin
+git checkout "$BRANCH"
+git reset --hard "origin/$BRANCH"
 
-CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-echo "🔹 Current branch: $CURRENT_BRANCH"
+echo "📌 Updated commit:"
+git log -1 --oneline
 
-# ------------------------------
-# Sync code from GitHub
-# ------------------------------
-echo "📥 Syncing code with GitHub..."
-git fetch origin || exit 1
-git reset --hard origin/$CURRENT_BRANCH || exit 1
-git clean -fd || exit 1
-
-# ------------------------------
-# Clean old build and node_modules
-# ------------------------------
-echo "🧹 Cleaning old build and node_modules..."
-rm -rf node_modules .next
-
-# ------------------------------
-# Install dependencies (local, CI/CD safe)
-# ------------------------------
 echo "📦 Installing dependencies..."
-npm ci || { echo "❌ npm install failed"; exit 1; }
+npm install
 
-# ------------------------------
-# Build the application
-# ------------------------------
-echo "🏗️ Building the application..."
-npm run build || { echo "❌ npm build failed"; exit 1; }
+echo "🏗️ Building Next.js app..."
+npm run build
 
-# ------------------------------
-# PM2 Setup / Restart (CI/CD safe)
-# ------------------------------
-echo "🔍 Checking PM2 ecosystem file..."
-if [ ! -f "$ECOSYSTEM_FILE" ]; then
-    echo "⚠️ ecosystem.config.js not found. Creating one..."
-    cat <<EOF > $ECOSYSTEM_FILE
-module.exports = {
-  apps: [
-    {
-      name: "$APP_NAME",
-      script: "npm",
-      args: "start",
-      instances: 1,
-      autorestart: true,
-      watch: false,
-      env: {
-        NODE_ENV: "production",
-        PORT: 3015
-      }
-    }
-  ]
-};
-EOF
-fi
+echo "♻️ Restarting PM2..."
+pm2 restart "$PM2_APP" || PORT=$PORT pm2 start npm --name "$PM2_APP" -- start
 
-echo "🚀 Starting or Restarting app with PM2..."
-npx pm2 restart $ECOSYSTEM_FILE || npx pm2 start $ECOSYSTEM_FILE || { echo "❌ PM2 start/restart failed"; exit 1; }
+pm2 save
 
-# ------------------------------
-# Save PM2 process list
-# ------------------------------
-npx pm2 save
-
-echo "🎉 Deployment Successful!"
+echo "✅ Deployment completed successfully!"
