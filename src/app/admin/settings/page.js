@@ -154,7 +154,7 @@ export default function AdminSettingsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Admin Settings</h1>
-                    <p className="text-sm text-zinc-500 mt-1">Configure global branding and dashboard settings.</p>
+                    <p className="text-sm text-zinc-500 mt-1">Configure global branding.....</p>
                 </div>
                 <Button
                     onClick={handleSave}
