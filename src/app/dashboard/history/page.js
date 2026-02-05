@@ -253,7 +253,7 @@ export default function HistoryPage() {
                                         </div>
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="All">All Types</SelectItem>
+
                                         <SelectItem value="admin">Admin</SelectItem>
                                         <SelectItem value="user">User</SelectItem>
                                     </SelectContent>
