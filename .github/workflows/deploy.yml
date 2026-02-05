@@ -1,49 +1,47 @@
-name: Remote SSH Deployment
+name: Deploy Next.js to Production
 
 on:
   push:
     branches:
-      - main
       - gsc-next
-  workflow_dispatch:
 
 jobs:
-  deploy:
+  deploy-production:
+    name: Deploy to Hostinger (Production)
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          timeout: 60s
-          command_timeout: 15m
-          debug: true
-          script_stop: true
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
           script: |
-            echo "✅ Connected to server"
-            whoami
-            pwd
+            set -e
 
-            echo "🔹 Changing to project directory..."
-            cd /home/eduwhistle-gscindex/htdocs/gscindex.eduwhistle.com/gsc-next || {
-              echo "❌ Project directory not found"
-              exit 1
-            }
+            cd /home/eduwhistle-gscanalytics/htdocs/gscanalytics.eduwhistle.com
 
-            echo "🔹 Listing project files"
-            ls -la
+            git config --global --add safe.directory "$(pwd)"
 
-            echo "🔹 Making deploy.sh executable"
-            chmod +x deploy.sh
+            echo "Before pull"
+            git log -1 --oneline || true
 
-            echo "🚀 Running deploy.sh"
-            ./deploy.sh
+            git fetch origin
+            git checkout gsc-next
+            git reset --hard origin/gsc-next
 
-            echo "✅ Deployment completed successfully"
+            echo "After pull"
+            git log -1 --oneline
+
+            echo "Installing dependencies"
+            npm install
+
+            echo "Building Next.js app"
+            npm run build
+
+            echo "Restarting PM2"
+            pm2 restart gsc-next || PORT=3021 pm2 start npm --name "gsc-next" -- start
+
+            pm2 save
