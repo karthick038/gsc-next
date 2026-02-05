@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import connectDB from "@/lib/db";
 import Submission from "@/models/Submission";
-import User from "@/models/User";
 import mongoose from "mongoose";
 
 export async function GET(request) {
@@ -41,7 +40,6 @@ export async function GET(request) {
         const actionParam = searchParams.get("action")?.trim();
         const statusCodeParam = searchParams.get("statusCode")?.trim();
         const websiteParam = searchParams.get("website")?.trim();
-        const userTypeParam = searchParams.get("userType")?.trim(); // admin or user
 
         await connectDB();
 
@@ -103,53 +101,14 @@ export async function GET(request) {
         }))].filter(Boolean).sort();
 
         // 7. Fetch Data
-        let submissions;
-        let totalCount;
-
-        // If userType filter is applied, use aggregation to join with User collection
-        if (userTypeParam && userTypeParam !== "All") {
-            const matchStage = andFilters.length > 0 ? { $match: { $and: andFilters } } : { $match: {} };
-
-            const pipeline = [
-                matchStage,
-                {
-                    $lookup: {
-                        from: "login_users",
-                        localField: "userId",
-                        foreignField: "_id",
-                        as: "user"
-                    }
-                },
-                { $unwind: "$user" },
-                { $match: { "user.role": userTypeParam } },
-                { $sort: { submittedAt: -1, createdAt: -1 } }
-            ];
-
-            // Get total count for pagination
-            const countPipeline = [...pipeline];
-            countPipeline.push({ $count: "total" });
-            const countResult = await Submission.aggregate(countPipeline);
-            totalCount = countResult.length > 0 ? countResult[0].total : 0;
-
-            // Get paginated results
-            pipeline.push({ $skip: skip });
-            pipeline.push({ $limit: limitValue });
-
-            const results = await Submission.aggregate(pipeline);
-
-            // Remove the user field from results to match expected format
-            submissions = results.map(({ user, ...submission }) => submission);
-        } else {
-            // Standard query without userType filter
-            totalCount = await Submission.countDocuments(query);
-            submissions = await Submission.find(query)
-                .sort({ submittedAt: -1, createdAt: -1 })
-                .skip(skip)
-                .limit(limitValue)
-                .lean();
-        }
-
+        const totalCount = await Submission.countDocuments(query);
         const totalPages = Math.ceil(totalCount / limitValue) || 1;
+
+        const submissions = await Submission.find(query)
+            .sort({ submittedAt: -1, createdAt: -1 })
+            .skip(skip)
+            .limit(limitValue)
+            .lean();
 
         return NextResponse.json({
             history: submissions,
