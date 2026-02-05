@@ -11,7 +11,14 @@ export const authConfig = {
             const isLoginPage = nextUrl.pathname === "/login";
             const isRoot = nextUrl.pathname === "/";
 
-            if (isRoot) return true;
+            if (isRoot) {
+                if (isLoggedIn) {
+                    const userRole = auth.user.role?.toLowerCase();
+                    const dest = (userRole === "admin") ? "/admin/dashboard" : "/dashboard";
+                    return Response.redirect(new URL(dest, nextUrl));
+                }
+                return Response.redirect(new URL("/login", nextUrl));
+            }
 
             if (isLoginPage) {
                 if (isLoggedIn) {
