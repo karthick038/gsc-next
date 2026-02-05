@@ -85,8 +85,7 @@ export default function HistoryPage() {
         action: searchParams.get("action") || "All",
         statusCode: searchParams.get("statusCode") || "All",
         website: searchParams.get("website") || "",
-        userId: searchParams.get("userId") || "All",
-        userType: searchParams.get("userType") || "All"
+        userId: searchParams.get("userId") || "All"
     }), [searchParams]);
 
     // Get pagination from URL search params
@@ -124,7 +123,6 @@ export default function HistoryPage() {
             if (filters.statusCode !== "All") params.append("statusCode", filters.statusCode);
             if (filters.website) params.append("website", filters.website);
             if (filters.userId !== "All") params.append("userId", filters.userId);
-            if (filters.userType !== "All") params.append("userType", filters.userType);
 
             params.append("limit", paginationState.limit.toString());
             params.append("page", paginationState.currentPage.toString());
@@ -240,25 +238,6 @@ export default function HistoryPage() {
                             )}
 
 
-                            {/* User Type Filter - Show only if there are submissions */}
-                            {paginationData.totalCount > 0 && (
-                                <Select
-                                    value={filters.userType}
-                                    onValueChange={(val) => handleFilterChange("userType", val)}
-                                >
-                                    <SelectTrigger className="w-[150px]">
-                                        <div className="flex items-center gap-2">
-                                            <User className="h-4 w-4 text-zinc-400" />
-                                            <SelectValue placeholder="User Type" />
-                                        </div>
-                                    </SelectTrigger>
-                                    <SelectContent>
-
-                                        <SelectItem value="admin">Admin</SelectItem>
-                                        <SelectItem value="user">User</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            )}
 
                             {/* Website Filter (Dynamic Origins) */}
                             <Select
