@@ -23,12 +23,7 @@ const UserSchema = new mongoose.Schema(
         lastLoginAt: {
             type: Date,
         },
-        resetOtp: {
-            type: String,
-        },
-        resetOtpExpiresAt: {
-            type: Date,
-        },
+
         siteUrls: {
             type: [String],
             default: [],

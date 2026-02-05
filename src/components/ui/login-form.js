@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useTransition } from 'react';
 import { authenticate } from '@/lib/actions';
-import Link from 'next/link';
+
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -105,15 +105,7 @@ export default function LoginForm({ logoUrl }) {
                             name="password"
                             render={({ field }) => (
                                 <FormItem className="grid gap-2">
-                                    <div className="flex items-center">
-                                        <FormLabel>Password</FormLabel>
-                                        <Link
-                                            href="/forgot-password"
-                                            className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-                                        >
-                                            Forgot your password?
-                                        </Link>
-                                    </div>
+                                    <FormLabel>Password</FormLabel>
                                     <FormControl>
                                         <div className="relative">
                                             <Input
