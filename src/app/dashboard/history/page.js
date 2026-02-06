@@ -333,7 +333,6 @@ export default function HistoryPage() {
                                     <SelectItem value="25">25 rows</SelectItem>
                                     <SelectItem value="50">50 rows</SelectItem>
                                     <SelectItem value="100">100 rows</SelectItem>
-                                    <SelectItem value="All">All rows</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
