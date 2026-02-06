@@ -498,7 +498,7 @@ export default function UploadJSON() {
                                 ) : (
                                     <>
                                         <UploadCloud className="h-10 w-10 text-zinc-300 mb-3" />
-                                        <p className="text-sm text-zinc-600 font-semibold tracking-tight">Click to upload or drag & drop</p>
+                                        <p className="text-sm text-zinc-600 font-semibold tracking-tight">Click to upload the file</p>
                                         <p className="text-[11px] text-zinc-400 mt-1 uppercase font-bold tracking-widest">.json files only</p>
                                     </>
                                 )}
