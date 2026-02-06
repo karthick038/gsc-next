@@ -68,16 +68,20 @@ export default function HistoryPage() {
     const [distinctStatusCodes, setDistinctStatusCodes] = useState([]);
     const [distinctWebsites, setDistinctWebsites] = useState([]);
     const [allUsers, setAllUsers] = useState([]);
-    const { data: session } = useSession();
+    const { data: session, status: sessionStatus } = useSession();
     const [isAdmin, setIsAdmin] = useState(false);
 
+    // Enhanced admin detection with better session handling
     useEffect(() => {
-        if (session?.user) {
+        if (sessionStatus === "authenticated" && session?.user) {
             const role = session.user.role?.toLowerCase();
-            // All admins now have cross-user visibility
-            setIsAdmin(role === "admin");
+            const isAdminUser = role === "admin";
+            setIsAdmin(isAdminUser);
+            console.log("Admin status updated:", { role, isAdminUser, sessionUser: session.user });
+        } else {
+            setIsAdmin(false);
         }
-    }, [session]);
+    }, [session, sessionStatus]);
 
     // Get filters from URL search params
     const filters = useMemo(() => ({
@@ -210,7 +214,15 @@ export default function HistoryPage() {
                 <CardHeader className="pb-3">
                     <div className="space-y-1 pb-4">
                         <CardTitle className="text-lg">Recent Submissions</CardTitle>
-                        <CardDescription>Filtering {history.length} records</CardDescription>
+                        <CardDescription>
+                            Filtering {history.length} records
+                            {/* Debug indicator - can be removed after testing */}
+                            {sessionStatus === "authenticated" && (
+                                <span className="ml-2 text-xs px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">
+                                    Role: {session?.user?.role || 'none'} | Admin: {isAdmin ? 'Yes' : 'No'}
+                                </span>
+                            )}
+                        </CardDescription>
                     </div>
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div className="flex flex-wrap items-center gap-4">
