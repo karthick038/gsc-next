@@ -373,10 +373,8 @@ export default function IndexingPage() {
                 return { isValid: false, error: "Entered URL does not belong to the selected website" };
             }
 
-            // Optional: check protocol
-            if (enteredUrl.protocol !== siteUrl.protocol) {
-                return { isValid: false, error: "Protocol mismatch (http vs https)" };
-            }
+            // Protocol validation removed - both http and https are acceptable
+            // Google Search Console handles both variants
 
             return { isValid: true };
         } catch (e) {
