@@ -72,10 +72,10 @@ async function run() {
     try {
         fs.appendFileSync('db-debug.log', "Attempting to connect...\n");
         await client.connect();
-        fs.appendFileSync('db-debug.log', "✅ Successfully connected to MongoDB!\n");
+        fs.appendFileSync('db-debug.log', " Successfully connected to MongoDB!\n");
 
         await client.db('admin').command({ ping: 1 });
-        fs.appendFileSync('db-debug.log', "✅ Ping successful!\n");
+        fs.appendFileSync('db-debug.log', " Ping successful!\n");
 
     } catch (error) {
         fs.appendFileSync('db-debug.log', "\n❌ CONNECTION FAILED\n");
