@@ -10,7 +10,7 @@ export const authConfig = {
             const isOnAdmin = nextUrl.pathname.startsWith("/admin");
             const isLoginPage = nextUrl.pathname === "/login";
             const isRoot = nextUrl.pathname === "/";
-            const isPublicDocPage = nextUrl.pathname === "/how-to-create-service-account";
+            const isPublicDocPage = nextUrl.pathname === "/how-to-use";
 
             if (isRoot) {
                 if (isLoggedIn) {
