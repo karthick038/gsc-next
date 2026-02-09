@@ -10,6 +10,7 @@ export const authConfig = {
             const isOnAdmin = nextUrl.pathname.startsWith("/admin");
             const isLoginPage = nextUrl.pathname === "/login";
             const isRoot = nextUrl.pathname === "/";
+            const isPublicDocPage = nextUrl.pathname === "/how-to-create-service-account";
 
             if (isRoot) {
                 if (isLoggedIn) {
@@ -36,6 +37,11 @@ export const authConfig = {
                     return Response.redirect(new URL("/dashboard", nextUrl));
                 }
                 return false; // Redirect to login
+            }
+
+            // Allow public access to documentation page
+            if (isPublicDocPage) {
+                return true;
             }
 
             if (isOnDashboard) {
