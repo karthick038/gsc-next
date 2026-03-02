@@ -593,9 +593,36 @@ function ErrorDetailPanel({ siteUrl, feedpath }) {
                                             )}
 
                                             {urlCheck.checkMode === "health" && (
-                                                <span className={`text-[11px] font-black tabular-nums min-w-[3ch] text-right ${u.category === "ok" ? "text-green-600" : u.category === "error" ? "text-red-600" : "text-zinc-400"}`}>
-                                                    {u.status && u.statusText ? `${u.status} - ${u.statusText}` : (u.status || u.statusText || "—")}
-                                                </span>
+                                                <div className="flex items-center gap-2 ml-auto text-right">
+                                                    <span
+                                                        className={`text-[11px] font-semibold ${u.category === "ok"
+                                                            ? "text-green-600"
+                                                            : u.category === "redirect"
+                                                                ? "text-yellow-600"
+                                                                : "text-red-600"
+                                                            }`}
+                                                    >
+                                                        {u.status} - {u.statusText}
+                                                    </span>
+                                                    {u.rawResponse && (
+                                                        <div className="relative group/tooltip inline-flex items-center">
+                                                            <Info className="h-3.5 w-3.5 text-zinc-400 cursor-pointer hover:text-zinc-600 transition-colors" />
+                                                            {/* Tooltip content: shows below for the first few items (i < 3) and above for others */}
+                                                            <div className={`pointer-events-none absolute right-0 min-w-[140px] w-max max-w-[220px] p-2 text-[10px] sm:text-[11px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-md shadow-xl opacity-0 group-hover/tooltip:opacity-100 transition-opacity duration-200 z-[100] border border-zinc-200 dark:border-zinc-700 text-left ${i < 3 ? "top-full mt-2" : "bottom-full mb-2"
+                                                                }`}>
+                                                                <div className="flex flex-col gap-1 items-start text-left">
+                                                                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-700 pb-0.5 w-full text-left">Raw Response</span>
+                                                                    <span className="whitespace-normal leading-relaxed text-left">{u.rawResponse}</span>
+                                                                </div>
+                                                                {/* Triangle/Arrow */}
+                                                                <div className={`absolute right-1 border-4 border-transparent ${i < 3
+                                                                    ? "bottom-full border-b-zinc-100 dark:border-b-zinc-800"
+                                                                    : "top-full border-t-zinc-100 dark:border-t-zinc-800"
+                                                                    }`} />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             )}
                                         </div>
                                     ))}

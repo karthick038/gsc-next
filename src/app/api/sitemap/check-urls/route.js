@@ -35,6 +35,7 @@ async function checkUrl(url) {
             url,
             status,
             statusText: statusLabel(status),
+            rawResponse: category === "redirect" ? `Redirect to: ${location}` : statusLabel(status),
             category,
             redirectUrl: category === "redirect" ? location : null,
         };
@@ -43,6 +44,7 @@ async function checkUrl(url) {
             url,
             status: null,
             statusText: err.name === "AbortError" ? "Timeout" : "Connection Failed",
+            rawResponse: err.message || "Unknown Connection Error",
             category: "error",
             redirectUrl: null,
         };
