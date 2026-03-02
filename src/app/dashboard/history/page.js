@@ -219,7 +219,7 @@ export default function HistoryPage() {
                             {/* Debug indicator - can be removed after testing */}
                             {sessionStatus === "authenticated" && (
                                 <span className="ml-2 text-xs px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">
-                                    Role: {session?.user?.role || 'none'} | Admin: {isAdmin ? 'Yes' : 'No'}
+                                    Role: {session?.user?.role || 'none'}
                                 </span>
                             )}
                         </CardDescription>
