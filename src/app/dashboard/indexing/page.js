@@ -414,7 +414,7 @@ export default function IndexingPage() {
             {isServiceAccountValid && (indexingStatus === "CONNECTED" || indexingStatus === "PARTIAL") && activeVerifiedSites.length > 0 && !isConnectionLoading && (
                 <div className="space-y-3">
                     <label className="text-xs font-black uppercase tracking-widest text-zinc-500 ml-1">
-                        
+
                     </label>
                     <div className="flex flex-wrap gap-3 mt-4">
                         {activeVerifiedSites.map((site, index) => {
@@ -634,6 +634,7 @@ export default function IndexingPage() {
                                     <TooltipTrigger asChild>
                                         <span className="w-full">
                                             <Button
+                                                variant="destructive"
                                                 onClick={handleStart}
                                                 disabled={isProcessing || (inputType === 'text' && !input.trim()) || (inputType === 'csv' && !csvFile) || isGlobalDisabled || isLimitReached || isInsufficientQuota || invalidUrls.length > 0 || isUrlLimitExceeded}
                                                 className={`w-full font-bold uppercase tracking-widest h-10 text-xs shadow-md transition-all ${invalidUrls.length > 0 || isLimitReached || isUrlLimitExceeded ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer hover:shadow-lg active:scale-95'}`}
