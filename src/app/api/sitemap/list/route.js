@@ -1,0 +1,146 @@
+import { NextResponse } from "next/server";
+import { auth } from "@/auth";
+import connectDB from "@/lib/db";
+import ServiceAccount from "@/models/ServiceAccount";
+import { google } from "googleapis";
+import { decrypt } from "@/lib/encryption";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(request) {
+    try {
+        const session = await auth();
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const { searchParams } = new URL(request.url);
+        const siteUrl = searchParams.get("siteUrl");
+
+        if (!siteUrl) {
+            return NextResponse.json({ error: "siteUrl is required" }, { status: 400 });
+        }
+
+        await connectDB();
+        const accounts = await ServiceAccount.find({ userId: session.user.id, isValid: true });
+
+        if (!accounts.length) {
+            return NextResponse.json({ error: "No valid service accounts found." }, { status: 403 });
+        }
+
+        // Encode siteUrl for the API path
+        const encodedSiteUrl = encodeURIComponent(siteUrl);
+        const apiUrl = `https://www.googleapis.com/webmasters/v3/sites/${encodedSiteUrl}/sitemaps`;
+
+        // Try each service account directly against the sitemap API
+        // (avoids an extra sites.list() round-trip that can fail silently)
+        let lastError = "No valid service account found for this property.";
+
+        for (const acc of accounts) {
+            try {
+                const decryptedText = decrypt(acc.encryptedJson);
+                if (!decryptedText) continue;
+                const creds = JSON.parse(decryptedText);
+
+                const jwtClient = new google.auth.JWT({
+                    email: creds.client_email,
+                    key: creds.private_key,
+                    scopes: ["https://www.googleapis.com/auth/webmasters.readonly"],
+                });
+
+                const tokens = await jwtClient.authorize();
+                const accessToken = tokens.access_token;
+
+                const res = await fetch(apiUrl, {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                        "Content-Type": "application/json",
+                    },
+                });
+
+                // 403 = this account has no permission for this property; try next
+                if (res.status === 403) {
+                    // lastError = "Insufficient permissions to access sitemap data for this property.";
+                    // continue;
+                    const errText = await res.text();
+                    lastError = `GSC API Error ${res.status}: ${errText}`;
+                    continue;
+                }
+
+                if (res.status === 429) {
+                    return NextResponse.json(
+                        { error: "Google API quota exceeded. Please try again later." },
+                        { status: 429 }
+                    );
+                }
+
+                if (!res.ok) {
+                    const errText = await res.text();
+                    lastError = `GSC API Error ${res.status}: ${errText}`;
+                    continue;
+                }
+
+                // Success — parse and return enriched sitemaps
+                const data = await res.json();
+                const sitemaps = data.sitemap || [];
+
+                const enriched = sitemaps.map((sm) => {
+                    const contents = sm.contents || [];
+
+                    // Find the 'web' content type — this is what GSC dashboard counts as "Discovered"
+                    const webContent = contents.find((c) => c.type === "web");
+                    const webSubmitted = parseInt(webContent?.submitted || 0);
+                    const webIndexed = parseInt(webContent?.indexed || 0);
+
+                    // Total across ALL content types (image, video, news, web)
+                    const totalSubmitted = contents.reduce(
+                        (acc, c) => acc + (parseInt(c.submitted) || 0), 0
+                    );
+                    const totalIndexed = contents.reduce(
+                        (acc, c) => acc + (parseInt(c.indexed) || 0), 0
+                    );
+
+                    const errors = sm.errors ? parseInt(sm.errors) : 0;
+                    const warnings = sm.warnings ? parseInt(sm.warnings) : 0;
+
+                    let statusLabel = "Success";
+                    if (sm.isPending) statusLabel = "Pending";
+                    else if (errors > 0) statusLabel = "Has Errors";
+                    else if (warnings > 0) statusLabel = "Has Warnings";
+
+                    return {
+                        path: sm.path,
+                        lastSubmitted: sm.lastSubmitted || null,
+                        lastDownloaded: sm.lastDownloaded || null,
+                        isPending: sm.isPending || false,
+                        isSitemapsIndex: sm.isSitemapsIndex || sm.type === "INDEX" || sm.type === "sitemapsIndex" || false,
+                        errors,
+                        warnings,
+                        statusLabel,
+                        webSubmitted,
+                        webIndexed,
+                        totalSubmitted,
+                        totalIndexed,
+                        contents,
+                    };
+                });
+
+                return NextResponse.json({ sitemaps: enriched });
+
+            } catch (err) {
+                console.error(`Sitemap list: account attempt failed (${acc.filename}):`, err.message);
+                lastError = err.message;
+            }
+        }
+
+        // All accounts tried and failed
+        return NextResponse.json({ error: lastError }, { status: 403 });
+
+    } catch (error) {
+        console.error("Sitemap List API Error:", error);
+        return NextResponse.json(
+            { error: "Internal Server Error", details: error.message },
+            { status: 500 }
+        );
+    }
+}

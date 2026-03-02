@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, KeyRound, Radio, History as HistoryIcon, Users, Settings as SettingsIcon } from "lucide-react";
+import { LayoutDashboard, KeyRound, Radio, History as HistoryIcon, Users, Settings as SettingsIcon, Map } from "lucide-react";
 
 const USER_LINKS = [
     { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
     { href: "/dashboard/credentials", label: "Service Account Credentials", icon: KeyRound },
     { href: "/dashboard/indexing", label: "Indexing Request", icon: Radio },
     { href: "/dashboard/history", label: "Submission History", icon: HistoryIcon },
+    { href: "/dashboard/sitemap", label: "Sitemap Submission", icon: Map },
 ];
 
 const ADMIN_LINKS = [
