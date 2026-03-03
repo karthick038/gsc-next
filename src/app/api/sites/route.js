@@ -11,7 +11,7 @@ export async function GET() {
         }
 
         await connectDB();
-        const user = await User.findById(session.user.id).select("siteUrls verifiedSites indexingStatus lastConnectionTestAt connectedSitesCount sitesWithPermission sitesWithoutPermission");
+        const user = await User.findById(session.user.id).select("email siteUrls verifiedSites indexingStatus lastConnectionTestAt connectedSitesCount sitesWithPermission sitesWithoutPermission");
 
         if (!user) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -20,6 +20,7 @@ export async function GET() {
         console.log("DEBUG verifiedSites from DB:", JSON.stringify(user.verifiedSites, null, 2));
 
         return NextResponse.json({
+            email: user.email,
             siteUrls: user.siteUrls || [],
             verifiedSites: user.verifiedSites || [],
             indexingStatus: user.indexingStatus || "NOT_VERIFIED",

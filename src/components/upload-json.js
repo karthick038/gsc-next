@@ -45,7 +45,7 @@ const normalizeUrl = (url) => {
 };
 
 export default function UploadJSON() {
-    const { refreshStatus, disconnect, indexingStatus, verifiedSites, isLoading: hookLoading } = useConnection();
+    const { refreshStatus, disconnect, indexingStatus, verifiedSites, userEmail, isLoading: hookLoading } = useConnection();
     const [status, setStatus] = useState("loading"); // loading, idle
     const [message, setMessage] = useState("");
     const [isUploading, setIsUploading] = useState(false);
@@ -70,7 +70,15 @@ export default function UploadJSON() {
     const fileInputRef = useRef(null);
     const [showForm, setShowForm] = useState(false);
     const [newSiteUrl, setNewSiteUrl] = useState("");
+    const [serviceAccountEmail, setServiceAccountEmail] = useState("");
     const [selectedFile, setSelectedFile] = useState(null);
+
+    // Default Email from Session
+    useEffect(() => {
+        if (showForm && !serviceAccountEmail && userEmail) {
+            setServiceAccountEmail(userEmail);
+        }
+    }, [showForm, userEmail, serviceAccountEmail]);
 
     // Real-time Validation logic
     const urlValidation = useMemo(() => {
@@ -365,6 +373,9 @@ export default function UploadJSON() {
             // 1. Upload JSON
             const formData = new FormData();
             formData.append("file", selectedFile);
+            if (serviceAccountEmail) {
+                formData.append("customEmail", serviceAccountEmail);
+            }
 
             const uploadRes = await fetch("/api/upload", {
                 method: "POST",
@@ -473,6 +484,20 @@ export default function UploadJSON() {
 
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
+                                <KeyRound className="h-3.5 w-3.5 text-zinc-400" />
+                                User Email
+                            </label>
+                            <Input
+                                value={serviceAccountEmail}
+                                onChange={(e) => setServiceAccountEmail(e.target.value)}
+                                placeholder="user@example.com"
+                                className="h-11 border-zinc-200 focus:ring-blue-500 bg-zinc-50/50"
+                            />
+                            <p className="text-[11px] text-zinc-400 italic">By default, your account email is used. You can change it if needed.</p>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
                                 <FileText className="h-3.5 w-3.5 text-zinc-400" />
                                 Upload Service Account JSON
                             </label>
@@ -484,7 +509,14 @@ export default function UploadJSON() {
                                     type="file"
                                     accept=".json"
                                     ref={fileInputRef}
-                                    onChange={(e) => setSelectedFile(e.target.files[0])}
+                                    onChange={async (e) => {
+                                        const file = e.target.files[0];
+                                        if (file) {
+                                            setSelectedFile(file);
+                                            // Auto-population of email from JSON is now removed to favor User Email
+                                            // But we keep the file reading for verification if needed
+                                        }
+                                    }}
                                     className="hidden"
                                 />
                                 {selectedFile ? (
@@ -516,7 +548,7 @@ export default function UploadJSON() {
                     <div className="p-6 bg-zinc-50 border-t flex gap-3 justify-end">
                         <Button
                             variant="ghost"
-                            onClick={() => { setShowForm(false); setNewSiteUrl(""); setSelectedFile(null); setMessage(""); }}
+                            onClick={() => { setShowForm(false); setNewSiteUrl(""); setServiceAccountEmail(""); setSelectedFile(null); setMessage(""); }}
                             disabled={isSavingAndChecking}
                             className="font-medium"
                         >

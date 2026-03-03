@@ -29,26 +29,56 @@ async function checkIndexingBatch(urls, siteUrl, accounts) {
                 await jwtClient.authorize();
                 const searchConsole = google.searchconsole({ version: "v1", auth: jwtClient });
 
-                const res = await searchConsole.urlInspection.index.inspect({
+                // 1. Find the exact siteUrl in this account's property list
+                const sitesRes = await searchConsole.sites.list();
+                const sitesList = sitesRes.data.siteEntry || [];
+                const normalizedTarget = siteUrl.toLowerCase().replace(/\/$/, "").replace(/^https?:\/\//, "");
+
+                const matchedSite = sitesList.find(s => {
+                    const normalizedS = s.siteUrl.toLowerCase().replace(/\/$/, "").replace(/^https?:\/\//, "");
+                    return normalizedS === normalizedTarget;
+                });
+
+                if (!matchedSite) {
+                    console.log(`Account ${acc.clientEmail} does not have access to ${siteUrl}`);
+                    continue; // Try next account
+                }
+
+                // 2. Perform inspection using the EXACT siteUrl Google expects
+                const response = await searchConsole.urlInspection.index.inspect({
                     requestBody: {
                         inspectionUrl: url,
-                        siteUrl: siteUrl.trim(),
+                        siteUrl: matchedSite.siteUrl,
                     },
                 });
 
-                const verdict = res.data.inspectionResult?.indexStatusResult?.verdict || "NEUTRAL";
+                const result = response.data.inspectionResult?.indexStatusResult;
+                const verdict = result?.verdict || "VERDICT_UNSPECIFIED";
+
+                // PASS: The URL is on Google.
+                // PARTIAL: The URL is on Google, but has issues.
+                // FAIL, NEUTRAL: The URL is NOT on Google.
+                const isIndexed = ["PASS", "PARTIAL"].includes(verdict);
+                const isNotIndexed = ["FAIL", "NEUTRAL"].includes(verdict);
+
                 inspection = {
                     verdict,
-                    indexStatus: verdict === "PASS" ? "INDEXED" : "NOT_INDEXED",
-                    coverageState: res.data.inspectionResult?.indexStatusResult?.coverageState || null
+                    indexStatus: isIndexed ? "INDEXED" : (isNotIndexed ? "NOT_INDEXED" : "UNCHECKED"),
+                    coverageState: result?.coverageState || null
                 };
-                break; // Found an account that works
+
+                // If we got a definitive verdict, we're done
+                if (verdict !== "VERDICT_UNSPECIFIED") {
+                    break;
+                }
 
             } catch (err) {
-                // If 403, this account lacks permission, try next one
-                if (err.message.includes("403")) continue;
-                // Other error (quota, etc.), we stop searching for this URL
-                break;
+                console.error(`Inspection failed for ${url} with account ${acc.clientEmail}:`, err.message);
+
+                // Only break on serious errors like quota. 
+                // Permissions (403/404) should continue to next account.
+                if (err.message.includes("429")) break; // Quota
+                continue; // Try next account
             }
         }
         results.push({ url, inspection });
