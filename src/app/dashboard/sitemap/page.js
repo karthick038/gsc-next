@@ -702,6 +702,17 @@ function HealthReportModal({ sitemapId, feedpath, isOpen, onClose }) {
                             <p className="text-xs text-zinc-500 max-w-xs mt-2">{error}</p>
                             <Button variant="outline" size="sm" onClick={fetchLog} className="mt-6 font-bold border-2">Retry Scan</Button>
                         </div>
+                    ) : (log && log.status === "PROCESSING") ? (
+                        <div className="flex flex-col items-center justify-center py-20 gap-4">
+                            <div className="relative">
+                                <Loader2 className="h-12 w-12 animate-spin text-amber-500" />
+                                <Clock className="h-5 w-5 text-amber-600 absolute -bottom-1 -right-1 bg-white dark:bg-zinc-900 rounded-full" />
+                            </div>
+                            <div className="text-center">
+                                <p className="text-sm font-black text-amber-600 uppercase tracking-widest">Scan in Progress</p>
+                                <p className="text-xs text-zinc-500 mt-2 max-w-[280px]">We're currently verifying the health of all URLs in this sitemap. This may take a moment.</p>
+                            </div>
+                        </div>
                     ) : log ? (
                         <div className="space-y-8">
                             {/* Scoreboard */}
@@ -783,10 +794,12 @@ function HealthReportModal({ sitemapId, feedpath, isOpen, onClose }) {
 
                 <div className="px-6 py-4 bg-zinc-50 dark:bg-zinc-800/40 border-t border-zinc-100 dark:border-zinc-800 flex justify-end gap-3">
                     <Button variant="outline" size="sm" onClick={onClose} className="font-bold border-2">Dismiss</Button>
-                    <Button size="sm" onClick={() => window.open(`https://search.google.com/search-console/sitemaps?resource_id=${encodeURIComponent(log?.siteUrl || '')}`, '_blank')} className="font-bold bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:text-black shadow-lg shadow-black/5">
-                        <ExternalLink className="h-3.5 w-3.5 mr-2" />
-                        GSC Dashboard
-                    </Button>
+                    {log && (
+                        <Button size="sm" onClick={() => window.open(`https://search.google.com/search-console/sitemaps?resource_id=${encodeURIComponent(log.siteUrl || '')}`, '_blank')} className="font-bold bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:text-black shadow-lg shadow-black/5">
+                            <ExternalLink className="h-3.5 w-3.5 mr-2" />
+                            GSC Dashboard
+                        </Button>
+                    )}
                 </div>
             </div>
         </div>
@@ -866,11 +879,7 @@ function SitemapsTable({ sitemaps, siteUrl, onRefresh, isRefreshing, lastRefresh
                                         >
                                             <CheckCircle2 className="h-3 w-3" /> Healthy
                                         </button>
-                                    ) : (
-                                        <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-zinc-400 uppercase tracking-widest bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1 rounded-full border border-zinc-100 dark:border-zinc-700">
-                                            <Clock className="h-3 w-3" /> Pending
-                                        </span>
-                                    )}
+                                    ) : null}
                                 </div>
                             </div>
 
@@ -888,11 +897,13 @@ function SitemapsTable({ sitemaps, siteUrl, onRefresh, isRefreshing, lastRefresh
                                     {(sm.webIndexed || 0).toLocaleString()}
                                 </p>
                             </div>
-                            <StatusBadge
-                                statusLabel={sm.statusLabel}
-                                errors={sm.errors}
-                                warnings={sm.warnings}
-                            />
+                            {sm.healthStatus !== "PROCESSING" && (
+                                <StatusBadge
+                                    statusLabel={sm.statusLabel}
+                                    errors={sm.errors}
+                                    warnings={sm.warnings}
+                                />
+                            )}
                             <button
                                 onClick={() => toggleRow(sm.path)}
                                 className="cursor-pointer text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
@@ -1101,6 +1112,20 @@ export default function SitemapPage() {
             setLastRefreshed(null);
         }
     }, [activeWebsite, isServiceAccountValid, indexingStatus, fetchSitemaps]);
+
+    // -- Polling for Processing Sitemaps --
+    useEffect(() => {
+        if (!activeWebsite || sitemaps.length === 0) return;
+
+        const hasProcessing = sitemaps.some(sm => sm.healthStatus === "PROCESSING");
+        if (!hasProcessing) return;
+
+        const pollInterval = setInterval(() => {
+            fetchSitemaps(activeWebsite);
+        }, 5000);
+
+        return () => clearInterval(pollInterval);
+    }, [activeWebsite, sitemaps, fetchSitemaps]);
 
     // Force clear all sitemap data if connection is lost
     useEffect(() => {
