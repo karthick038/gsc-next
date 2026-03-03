@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
     },
 });
 
-const APP_NAME = "IndexFast";
+const APP_NAME = "Google Search Console Analytics";
 
 /**
  * Sends a professional health check result email
@@ -26,8 +26,8 @@ export async function sendHealthCheckEmail({
 
     const isSuccess = status === "SUCCESS";
     const subject = isSuccess
-        ? `Sitemap Health Check Successful ✅`
-        : `Sitemap Health Check Failed ❌`;
+        ? `Sitemap Health Check Successful`
+        : `Sitemap Health Check Failed`;
 
     const accentColor = isSuccess ? "#22c55e" : "#ef4444";
     const checkDate = new Date().toLocaleString();
