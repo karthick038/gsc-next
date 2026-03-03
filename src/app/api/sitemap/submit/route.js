@@ -4,6 +4,7 @@ import connectDB from "@/lib/db";
 import ServiceAccount from "@/models/ServiceAccount";
 import { google } from "googleapis";
 import { decrypt } from "@/lib/encryption";
+import Sitemap from "@/models/Sitemap";
 
 export const dynamic = "force-dynamic";
 
@@ -103,6 +104,33 @@ export async function POST(request) {
                 }
 
                 // Successful PUT returns 204 No Content
+
+                // --- Save to local DB for Health Tracking ---
+                const sitemapRecord = await Sitemap.findOneAndUpdate(
+                    { userId: session.user.id, siteUrl, feedpath },
+                    {
+                        status: "PROCESSING",
+                        lastCheckedAt: new Date(),
+                        isDeleted: false
+                    },
+                    { upsert: true, new: true }
+                );
+
+                // --- Trigger Background Health Check (Non-blocking) ---
+                const protocol = request.headers.get("x-forwarded-proto") || "http";
+                const host = request.headers.get("host");
+                const baseUrl = `${protocol}://${host}`;
+
+                // Use fetch to trigger the task without awaiting its full completion
+                fetch(`${baseUrl}/api/sitemap/health-check/task`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        sitemapId: sitemapRecord._id,
+                        userId: session.user.id
+                    }),
+                }).catch(err => console.error("Background task trigger failed:", err));
+
                 return NextResponse.json({
                     success: true,
                     message: `Sitemap "${feedpath}" submitted successfully to ${siteUrl}.`,
