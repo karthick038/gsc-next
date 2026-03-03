@@ -414,7 +414,7 @@ function ErrorDetailPanel({ siteUrl, feedpath }) {
                     <div className="flex items-center justify-between gap-3 mb-3">
                         <div className="flex items-center gap-2 min-w-0 flex-wrap">
                             <AlertCircle className="h-3.5 w-3.5 text-zinc-400 flex-shrink-0" />
-                            <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200 uppercase tracking-widest">URL Health Check</span>
+                            <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200 uppercase tracking-widest">URL Health & Indexing Monitor</span>
                             {urlCheck && urlCheck.checkMode === "health" && (
                                 <div className="flex items-center gap-1.5 ml-1">
                                     <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-green-600 dark:text-green-400">
@@ -441,7 +441,7 @@ function ErrorDetailPanel({ siteUrl, feedpath }) {
                                     >
                                         {isCheckingUrls
                                             ? <><Loader2 className="h-3 w-3 animate-spin" /> Checking...</>
-                                            : <><AlertCircle className="h-3 w-3" /> Run Health Check</>
+                                            : <><AlertCircle className="h-3 w-3" /> Run URL Health Check</>
                                         }
                                     </button>
 
@@ -470,7 +470,7 @@ function ErrorDetailPanel({ siteUrl, feedpath }) {
                                         className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-md border-2 border-destructive/40 bg-transparent text-destructive dark:text-red-400 hover:bg-destructive/10 hover:border-destructive active:scale-95 transition-all disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                                     >
                                         <RefreshCw className={`h-3.5 w-3.5 ${isCheckingUrls ? "animate-spin" : ""}`} />
-                                        Run Health Check
+                                        Run URL Health Check
                                     </button>
 
                                     {isInspectingUrls ? (
@@ -647,9 +647,156 @@ function ErrorDetailPanel({ siteUrl, feedpath }) {
     );
 }
 
+// ─── Health Report Modal ────────────────────────────────────────────────────────
+function HealthReportModal({ sitemapId, feedpath, isOpen, onClose }) {
+    const [log, setLog] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        if (isOpen && sitemapId) {
+            fetchLog();
+        }
+    }, [isOpen, sitemapId]);
+
+    const fetchLog = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const res = await fetch(`/api/sitemap/health-check/log?sitemapId=${sitemapId}`);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Failed to fetch health log");
+            setLog(data.log);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-800/20">
+                    <div>
+                        <h3 className="text-lg font-black text-zinc-900 dark:text-zinc-100 uppercase tracking-tight">Sitemap Health Report</h3>
+                        <p className="text-xs text-zinc-400 mt-0.5 font-mono truncate max-w-md">{feedpath}</p>
+                    </div>
+                    <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                        <XCircle className="h-5 w-5" />
+                    </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
+                    {isLoading ? (
+                        <div className="flex flex-col items-center justify-center py-20 gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                            <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest">Loading diagnostics...</p>
+                        </div>
+                    ) : error ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                            <ShieldAlert className="h-12 w-12 text-red-200 mb-4" />
+                            <p className="text-sm font-bold text-red-600 uppercase tracking-tight">Analysis Unavailable</p>
+                            <p className="text-xs text-zinc-500 max-w-xs mt-2">{error}</p>
+                            <Button variant="outline" size="sm" onClick={fetchLog} className="mt-6 font-bold border-2">Retry Scan</Button>
+                        </div>
+                    ) : log ? (
+                        <div className="space-y-8">
+                            {/* Scoreboard */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1 text-center">Accessible</p>
+                                    <p className={`text-xl font-black text-center ${log.summary.accessible ? 'text-green-600' : 'text-red-600'}`}>
+                                        {log.summary.accessible ? 'YES' : 'NO'}
+                                    </p>
+                                </div>
+                                <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1 text-center">XML Valid</p>
+                                    <p className={`text-xl font-black text-center ${log.summary.xmlValid ? 'text-green-600' : 'text-red-600'}`}>
+                                        {log.summary.xmlValid ? 'YES' : 'NO'}
+                                    </p>
+                                </div>
+                                <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1 text-center">Total URLs</p>
+                                    <p className="text-xl font-black text-center text-zinc-900 dark:text-zinc-100">
+                                        {log.summary.totalUrls}
+                                    </p>
+                                </div>
+                                <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1 text-center">Response</p>
+                                    <p className="text-xl font-black text-center text-zinc-900 dark:text-zinc-100">
+                                        {log.summary.responseTimeMs}ms
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Detailed Errors */}
+                            {log.errors.length > 0 ? (
+                                <div className="space-y-3">
+                                    <h4 className="text-[11px] font-black text-red-500 uppercase tracking-widest flex items-center gap-2">
+                                        <ShieldAlert className="h-3.5 w-3.5" />
+                                        Critical Issues ({log.errors.length})
+                                    </h4>
+                                    <div className="rounded-xl border border-red-100 dark:border-red-900/30 overflow-hidden divide-y divide-red-50 dark:divide-red-900/20">
+                                        {log.errors.map((err, i) => (
+                                            <div key={i} className="p-3 flex items-start justify-between gap-4 bg-red-50/10 hover:bg-red-50/30 transition-colors">
+                                                <div className="min-w-0">
+                                                    <p className="text-[11px] font-mono text-zinc-600 dark:text-zinc-400 truncate mb-0.5" title={err.url}>{err.url}</p>
+                                                    <p className="text-xs font-bold text-red-700 dark:text-red-400">{err.type} {err.code ? `(${err.code})` : ''}</p>
+                                                </div>
+                                                <span className="text-[10px] font-black bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                                    {err.type}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-10 bg-green-50/30 dark:bg-green-900/10 rounded-2xl border border-green-100 dark:border-green-900/30">
+                                    <CheckCircle2 className="h-10 w-10 text-green-500 mb-3" />
+                                    <p className="text-sm font-black text-green-700 dark:text-green-400 uppercase tracking-tight">Sitemap is Healthy</p>
+                                    <p className="text-xs text-green-600/70 dark:text-green-400/70 mt-1">No critical accessibility or formatting issues detected.</p>
+                                </div>
+                            )}
+
+                            {/* Recommendations if Errors */}
+                            {log.errors.length > 0 && (
+                                <div className="bg-blue-50/50 dark:bg-blue-900/10 p-5 rounded-xl border border-blue-100 dark:border-blue-900/30">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Info className="h-4 w-4 text-blue-500" />
+                                        <span className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-widest">Recommended Actions</span>
+                                    </div>
+                                    <ul className="text-xs text-blue-600 dark:text-blue-300 space-y-1.5 list-disc pl-4 font-medium leading-relaxed">
+                                        <li>Fix broken links returning 4xx or 5xx status codes to ensure Google can crawl them.</li>
+                                        <li>Check your server's robots.txt to make sure it's not blocking sitemap access.</li>
+                                        <li>Verify that the XML structure strictly follows the sitemaps.org protocol.</li>
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="text-center py-20 text-zinc-400 font-bold uppercase tracking-widest italic">No diagnostics available.</div>
+                    )}
+                </div>
+
+                <div className="px-6 py-4 bg-zinc-50 dark:bg-zinc-800/40 border-t border-zinc-100 dark:border-zinc-800 flex justify-end gap-3">
+                    <Button variant="outline" size="sm" onClick={onClose} className="font-bold border-2">Dismiss</Button>
+                    <Button size="sm" onClick={() => window.open(`https://search.google.com/search-console/sitemaps?resource_id=${encodeURIComponent(log?.siteUrl || '')}`, '_blank')} className="font-bold bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:text-black shadow-lg shadow-black/5">
+                        <ExternalLink className="h-3.5 w-3.5 mr-2" />
+                        GSC Dashboard
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ─── Sitemaps Table ───────────────────────────────────────────────────────────
 function SitemapsTable({ sitemaps, siteUrl, onRefresh, isRefreshing, lastRefreshed }) {
     const [expandedRow, setExpandedRow] = useState(null);
+    const [reportModal, setReportModal] = useState({ isOpen: false, sitemapId: null, feedpath: "" });
 
     const toggleRow = (path) => {
         setExpandedRow((prev) => (prev === path ? null : path));
@@ -683,9 +830,50 @@ function SitemapsTable({ sitemaps, siteUrl, onRefresh, isRefreshing, lastRefresh
                                     <Eye className="h-3 w-3" />
                                     Last Read: {formatDate(sm.lastDownloaded)}
                                 </span>
+                                {sm.lastHealthCheckAt && (
+                                    <span className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 text-[10px] font-bold">
+                                        <Clock className="h-2.5 w-2.5" />
+                                        Checked: {new Date(sm.lastHealthCheckAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                )}
                             </div>
                         </div>
                         <div className="flex items-center gap-4 flex-shrink-0">
+                            {/* Health Status Dashboard UI */}
+                            <div className="flex flex-col items-end gap-1.5">
+                                <div className="flex items-center gap-2">
+                                    {sm.healthStatus === "PROCESSING" ? (
+                                        <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-amber-500 uppercase tracking-widest bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full animate-pulse">
+                                            <Loader2 className="h-2.5 w-2.5 animate-spin" /> Processing
+                                        </span>
+                                    ) : sm.healthStatus === "ERROR" ? (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setReportModal({ isOpen: true, sitemapId: sm._id || sm.path, feedpath: sm.path });
+                                            }}
+                                            className="cursor-pointer inline-flex items-center gap-1.5 text-[10px] font-black text-red-600 uppercase tracking-widest bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-full border border-red-100 dark:border-red-900/50 hover:bg-red-100 transition-colors"
+                                        >
+                                            <ShieldAlert className="h-3 w-3" /> {sm.localErrorCount} Error{sm.localErrorCount !== 1 ? 's' : ''}
+                                        </button>
+                                    ) : sm.healthStatus === "ACTIVE" ? (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setReportModal({ isOpen: true, sitemapId: sm._id || sm.path, feedpath: sm.path });
+                                            }}
+                                            className="cursor-pointer inline-flex items-center gap-1.5 text-[10px] font-black text-green-600 uppercase tracking-widest bg-green-50 dark:bg-green-900/20 px-2.5 py-1 rounded-full border border-green-100 dark:border-green-900/50 hover:bg-green-100 transition-colors"
+                                        >
+                                            <CheckCircle2 className="h-3 w-3" /> Healthy
+                                        </button>
+                                    ) : (
+                                        <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-zinc-400 uppercase tracking-widest bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1 rounded-full border border-zinc-100 dark:border-zinc-700">
+                                            <Clock className="h-3 w-3" /> Pending
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
                             {/* Discovered (web URLs in sitemap) */}
                             <div className="text-center hidden md:block">
                                 <p className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">Discovered</p>
@@ -728,6 +916,13 @@ function SitemapsTable({ sitemaps, siteUrl, onRefresh, isRefreshing, lastRefresh
                     )}
                 </div>
             ))}
+
+            <HealthReportModal
+                isOpen={reportModal.isOpen}
+                sitemapId={reportModal.sitemapId}
+                feedpath={reportModal.feedpath}
+                onClose={() => setReportModal({ ...reportModal, isOpen: false })}
+            />
         </div>
     );
 }

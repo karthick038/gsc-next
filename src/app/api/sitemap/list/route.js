@@ -4,6 +4,7 @@ import connectDB from "@/lib/db";
 import ServiceAccount from "@/models/ServiceAccount";
 import { google } from "googleapis";
 import { decrypt } from "@/lib/encryption";
+import Sitemap from "@/models/Sitemap";
 
 export const dynamic = "force-dynamic";
 
@@ -84,8 +85,14 @@ export async function GET(request) {
                 const data = await res.json();
                 const sitemaps = data.sitemap || [];
 
+                // Fetch local health data
+                const localSitemaps = await Sitemap.find({ userId: session.user.id, siteUrl });
+
                 const enriched = sitemaps.map((sm) => {
                     const contents = sm.contents || [];
+
+                    // Find local data for this sitemap
+                    const localData = localSitemaps.find(ls => ls.feedpath === sm.path);
 
                     // Find the 'web' content type — this is what GSC dashboard counts as "Discovered"
                     const webContent = contents.find((c) => c.type === "web");
@@ -122,6 +129,10 @@ export async function GET(request) {
                         totalSubmitted,
                         totalIndexed,
                         contents,
+                        // --- New Health Check Fields ---
+                        healthStatus: localData?.status || "PENDING",
+                        lastHealthCheckAt: localData?.lastCheckedAt || null,
+                        localErrorCount: localData?.errorCount || 0,
                     };
                 });
 

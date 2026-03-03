@@ -366,6 +366,13 @@ export default function UploadJSON() {
             return;
         }
 
+        // 0.5. Email Validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (serviceAccountEmail && !emailRegex.test(serviceAccountEmail)) {
+            setMessage("Please enter a valid email address for notifications.");
+            return;
+        }
+
         setIsSavingAndChecking(true);
         setMessage("");
 
