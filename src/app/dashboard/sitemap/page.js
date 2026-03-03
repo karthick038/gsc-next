@@ -57,7 +57,7 @@ function formatDate(dateStr) {
 }
 
 // ─── Error Detail Panel ───────────────────────────────────────────────────────
-function ErrorDetailPanel({ siteUrl, feedpath }) {
+function ErrorDetailPanel({ siteUrl, feedpath, localHealthStatus }) {
     const [details, setDetails] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -308,7 +308,7 @@ function ErrorDetailPanel({ siteUrl, feedpath }) {
                             {details.warnings} Warning{details.warnings !== 1 ? "s" : ""} detected
                         </div>
                     )}
-                    {details.errors === 0 && details.warnings === 0 && !details.isPending && (
+                    {details.errors === 0 && details.warnings === 0 && !details.isPending && localHealthStatus !== "ERROR" && (
                         <div className="flex items-center gap-1.5 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 rounded-full px-3 py-1 text-xs font-bold">
                             <CheckCircle2 className="h-3.5 w-3.5" />
                             No issues detected
@@ -922,7 +922,7 @@ function SitemapsTable({ sitemaps, siteUrl, onRefresh, isRefreshing, lastRefresh
                     {/* Expandable detail panel */}
                     {expandedRow === sm.path && (
                         <div className="border-t border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/40">
-                            <ErrorDetailPanel siteUrl={siteUrl} feedpath={sm.path} />
+                            <ErrorDetailPanel siteUrl={siteUrl} feedpath={sm.path} localHealthStatus={sm.healthStatus} />
                         </div>
                     )}
                 </div>
