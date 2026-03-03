@@ -9,12 +9,14 @@ const ConnectionContext = createContext({
     sitesWithoutPermission: 0,
     verifiedSites: [],
     activeWebsite: null,
+    userEmail: "",
     setActiveWebsite: () => { },
     isLoading: true,
     refreshStatus: async () => { }
 });
 
 export function ConnectionProvider({ children }) {
+    const [userEmail, setUserEmail] = useState("");
     const [indexingStatus, setIndexingStatus] = useState("UNKNOWN");
     const [connectedSitesCount, setConnectedSitesCount] = useState(0);
     const [sitesWithPermission, setSitesWithPermission] = useState(0);
@@ -28,6 +30,7 @@ export function ConnectionProvider({ children }) {
             const res = await fetch("/api/sites");
             if (res.ok) {
                 const data = await res.json();
+                setUserEmail(data.email || "");
                 setIndexingStatus(data.indexingStatus || "DISCONNECTED");
                 setConnectedSitesCount(data.connectedSitesCount || 0);
                 setSitesWithPermission(data.sitesWithPermission || 0);
@@ -54,6 +57,7 @@ export function ConnectionProvider({ children }) {
         setSitesWithoutPermission(0);
         setVerifiedSites([]);
         setActiveWebsite(null);
+        setUserEmail("");
         setIsLoading(false);
     }, []);
 
@@ -69,6 +73,7 @@ export function ConnectionProvider({ children }) {
             sitesWithoutPermission,
             verifiedSites,
             activeWebsite,
+            userEmail,
             setActiveWebsite,
             isLoading,
             refreshStatus: fetchStatus,

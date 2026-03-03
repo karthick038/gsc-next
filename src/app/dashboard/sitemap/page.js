@@ -802,6 +802,13 @@ export default function SitemapPage() {
 
     const isServiceAccountValid = connectedSitesCount > 0;
 
+    // Rule: Reset pill selection if connected websites change AND selected site is no longer valid
+    useEffect(() => {
+        if (activeWebsite && !activeVerifiedSites.find(s => s.url === activeWebsite)) {
+            setActiveWebsite(null);
+        }
+    }, [activeVerifiedSites, activeWebsite, setActiveWebsite]);
+
     // -- Submit form state --
     const [sitemapUrl, setSitemapUrl] = useState("");
     const [isValidating, setIsValidating] = useState(false);
@@ -889,7 +896,7 @@ export default function SitemapPage() {
 
     // Reset on website change
     useEffect(() => {
-        if (activeWebsite) {
+        if (activeWebsite && isServiceAccountValid && indexingStatus !== "DISCONNECTED") {
             setSitemapUrl("");
             setValidationResult(null);
             setSubmitResult(null);
@@ -898,7 +905,20 @@ export default function SitemapPage() {
             setSitemaps([]);
             setLastRefreshed(null);
         }
-    }, [activeWebsite, fetchSitemaps]);
+    }, [activeWebsite, isServiceAccountValid, indexingStatus, fetchSitemaps]);
+
+    // Force clear all sitemap data if connection is lost
+    useEffect(() => {
+        if (!isServiceAccountValid || indexingStatus === "DISCONNECTED") {
+            setSitemaps([]);
+            setSitemapUrl("");
+            setValidationResult(null);
+            setSubmitResult(null);
+            setActiveWebsite(null);
+            setListError(null);
+            setLastRefreshed(null);
+        }
+    }, [isServiceAccountValid, indexingStatus, setActiveWebsite]);
 
     const isGlobalDisabled =
         !activeWebsite ||
@@ -918,9 +938,9 @@ export default function SitemapPage() {
             {!isServiceAccountValid && !isConnectionLoading && (
                 <div className="flex flex-col items-center justify-center py-20 bg-zinc-50/50 rounded-2xl border-2 border-dashed border-zinc-200 animate-in fade-in slide-in-from-top-4">
                     <ShieldAlert className="h-12 w-12 text-zinc-300 mb-4" />
-                    <h3 className="text-lg font-black text-zinc-900 uppercase tracking-tight">No valid service account connection found</h3>
+                    <h3 className="text-lg font-black text-zinc-900 uppercase tracking-tight text-center">No Service Account connected</h3>
                     <p className="text-sm text-muted-foreground max-w-sm text-center mt-2 mb-6">
-                        Please upload and verify a valid JSON file in the Credentials tab to manage sitemaps.
+                        Please connect credentials to view submitted sitemaps.
                     </p>
                     <Button variant="outline" size="sm" asChild className="font-bold border-2">
                         <a href="/dashboard/credentials" className="flex items-center gap-2">
@@ -964,8 +984,8 @@ export default function SitemapPage() {
                 </div>
             )}
 
-            {/* ── Main content (locked when no website selected) ── */}
-            <div className={`space-y-6 transition-all duration-300 ${isGlobalDisabled || isConnectionLoading ? "opacity-40 pointer-events-none grayscale" : ""}`}>
+            {/* ── Main content (Always visible, but disabled if invalid) ── */}
+            <div className={`space-y-6 transition-all duration-300 ${(!isServiceAccountValid || indexingStatus === "DISCONNECTED" || !activeWebsite || isConnectionLoading) ? "opacity-40 pointer-events-none grayscale" : ""}`}>
 
                 {/* ── Page header ── */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-100 dark:border-zinc-800 pb-6">

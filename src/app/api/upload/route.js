@@ -3,7 +3,10 @@ import { auth } from "@/auth";
 import connectDB from "@/lib/db";
 import ServiceAccount from "@/models/ServiceAccount";
 import User from "@/models/User";
-import { encrypt } from "@/lib/encryption";
+import Submission from "@/models/Submission";
+import WebsiteQuota from "@/models/WebsiteQuota";
+import { encrypt, decrypt } from "@/lib/encryption";
+import { google } from "googleapis";
 
 // Helper to check auth
 async function getAuthenticatedUser() {
@@ -60,15 +63,102 @@ export async function DELETE(request) {
     await connectDB();
     const deletedAccount = await ServiceAccount.findOneAndDelete({ _id: id, userId });
 
-    await User.findByIdAndUpdate(userId, {
-      indexingStatus: "NOT_VERIFIED",
-      connectedSitesCount: 0,
-      sitesWithPermission: 0,
-      sitesWithoutPermission: 0,
-      lastConnectionTestAt: null
-    });
+    if (!deletedAccount) {
+      return NextResponse.json({ error: "Account not found or unauthorized" }, { status: 404 });
+    }
 
-    return NextResponse.json({ success: true, message: "Credential removed successfully" });
+    // --- CASCADE RE-VALIDATION ---
+    // When a credential is removed, we must check if the remaining credentials 
+    // still provide access to the currently connected sites.
+    const remainingAccounts = await ServiceAccount.find({ userId });
+    const user = await User.findById(userId);
+
+    if (user) {
+      const permissionMap = new Map(); // siteUrl -> permissionLevel
+
+      // 1. Build a map of ALL sites accessible by ANY remaining service account
+      for (const acc of remainingAccounts) {
+        try {
+          const decryptedText = decrypt(acc.encryptedJson);
+          if (!decryptedText) continue;
+
+          const credentials = JSON.parse(decryptedText);
+          const authClient = new google.auth.GoogleAuth({
+            credentials: {
+              client_email: credentials.client_email,
+              private_key: credentials.private_key,
+            },
+            scopes: ["https://www.googleapis.com/auth/webmasters.readonly"],
+          });
+
+          const searchConsole = google.searchconsole({ version: "v1", auth: authClient });
+          const sitesRes = await searchConsole.sites.list();
+          const sitesList = sitesRes.data.siteEntry || [];
+
+          sitesList.forEach(s => {
+            const normalized = s.siteUrl.toLowerCase().replace(/\/$/, "");
+            const existing = permissionMap.get(normalized);
+            // siteOwner has priority
+            if (!existing || s.permissionLevel === "siteOwner") {
+              permissionMap.set(normalized, s.permissionLevel);
+            }
+          });
+        } catch (err) {
+          console.error(`Cleanup re-validation failed for ${acc.filename}:`, err.message);
+        }
+      }
+
+      // 2. Filter user.verifiedSites to only include those still accessible
+      const originalVerifiedSites = [...(user.verifiedSites || [])];
+      user.verifiedSites = originalVerifiedSites.filter(site => {
+        const normalizedUserUrl = site.url.toLowerCase().replace(/\/$/, "").replace(/^https?:\/\//, "").replace(/^www\./, "");
+
+        let hasAccess = false;
+        for (const [gSite, perm] of permissionMap.entries()) {
+          const normalizedGSite = gSite.replace(/^sc-domain:/, "").replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
+          if (normalizedGSite === normalizedUserUrl) {
+            site.permissionLevel = perm; // Update permission level
+            hasAccess = true;
+            break;
+          }
+        }
+        return hasAccess;
+      });
+
+      // --- DATABASE PURGE ---
+      // For any site that lost access, delete its history and quotas
+      const removedSites = originalVerifiedSites.filter(
+        oldSite => !user.verifiedSites.some(newSite => newSite.url === oldSite.url)
+      );
+
+      for (const site of removedSites) {
+        console.log(`Purging quotas for disconnected site: ${site.url}`);
+        // History is preserved as per user requirement. Only quotas are reset.
+        await WebsiteQuota.deleteMany({ userId, website: site.url });
+      }
+
+      // 3. Update User meta counts and status
+      const totalConnected = user.verifiedSites.length;
+      user.connectedSitesCount = totalConnected;
+      user.sitesWithPermission = totalConnected;
+      user.sitesWithoutPermission = 0;
+
+      if (totalConnected === 0) {
+        user.indexingStatus = "DISCONNECTED";
+      } else if (totalConnected < originalVerifiedSites.length) {
+        user.indexingStatus = (totalConnected === (user.siteUrls?.length || 0)) ? "CONNECTED" : "PARTIAL";
+      }
+
+      user.lastConnectionTestAt = new Date();
+      await user.save();
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Credential removed and site connections updated",
+      totalRemainingSites: user ? user.connectedSitesCount : 0,
+      removedSitesCount: user ? (originalVerifiedCount - totalConnected) : 0
+    });
 
   } catch (error) {
     console.error("DELETE Account Error:", error);
@@ -85,6 +175,7 @@ export async function POST(request) {
 
     const formData = await request.formData();
     const files = formData.getAll("file");
+    const customEmail = formData.get("customEmail");
 
     if (files.length === 0) {
       return NextResponse.json({ error: "No files received." }, { status: 400 });
@@ -115,7 +206,7 @@ export async function POST(request) {
         const newAccount = await ServiceAccount.create({
           userId,
           filename: file.name,
-          clientEmail: client_email,
+          clientEmail: customEmail || client_email,
           projectId: project_id,
           encryptedJson,
           isValid: true
