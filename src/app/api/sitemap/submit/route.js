@@ -133,7 +133,7 @@ export async function POST(request) {
 
                 return NextResponse.json({
                     success: true,
-                    message: `Sitemap "${feedpath}" submitted successfully to ${siteUrl}.`,
+                    message: `Sitemap submitted successfully. Sitemap reports send to ${acc.clientEmail}`,
                 });
 
             } catch (err) {
