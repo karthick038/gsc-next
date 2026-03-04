@@ -46,3 +46,9 @@ db-debug.log
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# diagnostic and sensitive local results
+db_check_results.json
+check_db.js
+trigger_health_check.js
+*.json.bak

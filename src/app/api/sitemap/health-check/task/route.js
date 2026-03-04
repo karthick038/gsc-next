@@ -50,7 +50,7 @@ export async function POST(request) {
             feedpath: sitemap.feedpath,
             status: result.status,
             summary: result.summary,
-            errors: result.errors,
+            errorLogs: result.errors,
             checkedAt: new Date(),
         });
 
@@ -64,7 +64,7 @@ export async function POST(request) {
                 sitemapUrl: sitemap.feedpath,
                 status: result.status,
                 summary: result.summary,
-                errors: result.errors,
+                errorLogs: result.errors,
             });
         } else {
             console.warn(`No email recipient found for health check report (User: ${userId})`);

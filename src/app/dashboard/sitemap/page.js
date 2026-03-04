@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import {
     Loader2, CheckCircle2, XCircle, AlertCircle, AlertTriangle,
     RefreshCw, Map, ChevronDown, ChevronUp, ShieldAlert,
-    KeyRound, Clock, Eye, Download, FileText, Info, Send, ArrowRightLeft, Search, ExternalLink
+    KeyRound, Clock, Eye, Download, FileText, Info, Send, ArrowRightLeft, Search, ExternalLink, X
 } from "lucide-react";
 import { useConnection } from "@/hooks/use-connection";
 
@@ -900,7 +900,7 @@ function SitemapsTable({ sitemaps, siteUrl, onRefresh, isRefreshing, lastRefresh
                             {sm.healthStatus !== "PROCESSING" && (
                                 <StatusBadge
                                     statusLabel={sm.statusLabel}
-                                    errors={sm.errors}
+                                    errors={sm.errorLogs}
                                     warnings={sm.warnings}
                                 />
                             )}
@@ -1027,6 +1027,32 @@ export default function SitemapPage() {
     const [isLoadingList, setIsLoadingList] = useState(false);
     const [listError, setListError] = useState(null);
     const [lastRefreshed, setLastRefreshed] = useState(null);
+    const [notification, setNotification] = useState(null);
+    const prevSitemapsRef = useRef([]);
+
+    // Detect changes in sitemaps to trigger notifications
+    useEffect(() => {
+        if (sitemaps.length > 0 && prevSitemapsRef.current.length > 0) {
+            sitemaps.forEach(currentSm => {
+                const prevSm = prevSitemapsRef.current.find(sm => sm._id === currentSm._id);
+                // Detection logic: status changes from PROCESSING to something else
+                if (prevSm && prevSm.healthStatus === "PROCESSING" && currentSm.healthStatus !== "PROCESSING") {
+                    if (currentSm.healthStatus === "ERROR") {
+                        setNotification({
+                            type: "error",
+                            text: `The sitemap ${currentSm.feedpath} contains errors. The detailed error report has been sent to the configured email address.`
+                        });
+                    } else if (currentSm.healthStatus === "ACTIVE") {
+                        setNotification({
+                            type: "success",
+                            text: `Sitemap ${currentSm.feedpath} processed successfully with no errors.`
+                        });
+                    }
+                }
+            });
+        }
+        prevSitemapsRef.current = sitemaps;
+    }, [sitemaps]);
 
     // Pill colour palette (mirrors indexing page)
     const pillColors = [
@@ -1153,6 +1179,37 @@ export default function SitemapPage() {
 
     return (
         <div className="w-full max-w-6xl mx-auto space-y-6">
+            {notification && (
+                <Alert
+                    variant={notification.type === "success" ? "default" : "destructive"}
+                    className={notification.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800 animate-in fade-in slide-in-from-top-4" : "animate-in fade-in slide-in-from-top-4"}
+                >
+                    <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-3">
+                            {notification.type === "success" ? (
+                                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                            ) : (
+                                <AlertCircle className="h-5 w-5" />
+                            )}
+                            <div>
+                                <AlertTitle className="font-bold">
+                                    {notification.type === "success" ? "Processing Complete" : "Sitemap Errors Detected"}
+                                </AlertTitle>
+                                <AlertDescription>{notification.text}</AlertDescription>
+                            </div>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setNotification(null)}
+                            className="h-8 w-8 p-0 hover:bg-zinc-200/50"
+                        >
+                            <X className="h-4 w-4" />
+                            <span className="sr-only">Dismiss</span>
+                        </Button>
+                    </div>
+                </Alert>
+            )}
 
             {/* ── No credentials state ── */}
             {!isServiceAccountValid && !isConnectionLoading && (
