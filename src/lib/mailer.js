@@ -1,14 +1,23 @@
-import nodemailer from "nodemailer";
+import { BrevoClient } from "@getbrevo/brevo";
+import connectDB from "./db";
+import Settings from "@/models/Settings";
 
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
-    secure: process.env.SMTP_SECURE === "true",
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-    },
-});
+/**
+ * Initializes and returns the Brevo API instance with the configured key.
+ */
+async function getBrevoApi() {
+    await connectDB();
+    const settings = await Settings.findOne({});
+    const apiKey = settings?.brevoApiKey || process.env.BREVO_API_KEY;
+
+    if (!apiKey) {
+        throw new Error("Brevo API Key is not configured.");
+    }
+
+    const client = new BrevoClient({ apiKey });
+
+    return { client, settings };
+}
 
 const APP_NAME = "Google Search Console Analytics";
 
@@ -143,16 +152,24 @@ export async function sendHealthCheckEmail({
     `;
 
     try {
-        await transporter.sendMail({
-            from: `"${APP_NAME}" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
-            to,
+        const { client, settings } = await getBrevoApi();
+
+        const sender = {
+            name: settings?.siteTitle || APP_NAME,
+            email: settings?.smtpUser || process.env.SMTP_FROM || "notifications@gsc-dashboard.com"
+        };
+
+        await client.transactionalEmails.sendTransacEmail({
             subject,
-            html,
+            htmlContent: html,
+            sender,
+            to: [{ email: to }]
         });
-        console.log(`Success email sent to ${to}`);
+
+        console.log(`Success email sent to ${to} via Brevo API`);
         return { success: true };
     } catch (err) {
-        console.error("Failed to send email:", err);
-        return { success: false, error: err.message };
+        console.error("Failed to send email via Brevo API:", err.response?.body || err.message);
+        return { success: false, error: err.response?.body?.message || err.message };
     }
 }
