@@ -32,6 +32,7 @@ const UserSchema = new mongoose.Schema(
             url: { type: String },
             status: { type: String, enum: ["SUCCESS", "ERROR"] },
             permissionLevel: { type: String },
+            accountEmail: { type: String },
             error: { type: String }
         }],
         indexingStatus: {
