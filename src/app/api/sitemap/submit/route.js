@@ -5,6 +5,7 @@ import ServiceAccount from "@/models/ServiceAccount";
 import { google } from "googleapis";
 import { decrypt } from "@/lib/encryption";
 import Sitemap from "@/models/Sitemap";
+import User from "@/models/User";
 
 export const dynamic = "force-dynamic";
 
@@ -105,13 +106,28 @@ export async function POST(request) {
 
                 // Successful PUT returns 204 No Content
 
-                // --- Save to local DB for Health Tracking ---
+                // --- Get Correct Recipient Email for JSON attribution ---
+                const user = await User.findById(session.user.id);
+                let recipientEmail = user?.email;
+
+                if (user && user.verifiedSites) {
+                    const siteMatch = user.verifiedSites.find(vs => {
+                        const normalizedVs = vs.url.toLowerCase().replace(/\/$/, "").replace(/^https?:\/\//, "").replace(/^www\./, "");
+                        const normalizedTarget = siteUrl.toLowerCase().replace(/\/$/, "").replace(/^https?:\/\//, "").replace(/^www\./, "");
+                        return normalizedVs === normalizedTarget;
+                    });
+                    if (siteMatch?.accountEmail) {
+                        recipientEmail = siteMatch.accountEmail;
+                    }
+                }
+
                 const sitemapRecord = await Sitemap.findOneAndUpdate(
                     { userId: session.user.id, siteUrl, feedpath },
                     {
                         status: "PROCESSING",
                         lastCheckedAt: new Date(),
-                        isDeleted: false
+                        isDeleted: false,
+                        accountEmail: recipientEmail // Store for notifications
                     },
                     { upsert: true, new: true }
                 );
@@ -133,7 +149,7 @@ export async function POST(request) {
 
                 return NextResponse.json({
                     success: true,
-                    message: `Sitemap submitted successfully. Sitemap reports send to ${acc.clientEmail}`,
+                    message: `Sitemap submitted successfully. Sitemap reports send to ${recipientEmail || acc.clientEmail}`,
                 });
 
             } catch (err) {

@@ -33,6 +33,9 @@ const SitemapSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    accountEmail: {
+        type: String,
+    },
     createdAt: {
         type: Date,
         default: Date.now,
