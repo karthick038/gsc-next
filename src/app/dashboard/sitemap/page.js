@@ -1041,12 +1041,14 @@ export default function SitemapPage() {
                     if (currentSm.healthStatus === "ERROR") {
                         setNotification({
                             type: "error",
-                            text: `The sitemap ${currentSm.path} contains errors. The detailed error report has been sent to ${currentSm.accountEmail || 'the configured email address'}.`
+                            text: `The sitemap ${currentSm.path} contains errors. Email report status: ${currentSm.emailResponse?.statusText || 'Unknown'}.`,
+                            debug: currentSm.emailResponse
                         });
                     } else if (currentSm.healthStatus === "ACTIVE") {
                         setNotification({
                             type: "success",
-                            text: `Sitemap ${currentSm.path} processed successfully. Reports sent to ${currentSm.accountEmail || 'the configured email address'}.`
+                            text: `Sitemap ${currentSm.path} processed successfully.`,
+                            debug: currentSm.emailResponse
                         });
                     }
                 }
@@ -1060,7 +1062,7 @@ export default function SitemapPage() {
         if (notification) {
             const timer = setTimeout(() => {
                 setNotification(null);
-            }, 10000);
+            }, 15000);
             return () => clearTimeout(timer);
         }
     }, [notification]);
@@ -1215,6 +1217,17 @@ export default function SitemapPage() {
                                 </AlertTitle>
                                 <AlertDescription className="text-xs font-medium leading-relaxed opacity-90">
                                     {notification.text}
+                                    {notification.debug && (
+                                        <div className="mt-3 p-3 bg-white/10 dark:bg-black/20 rounded-lg border border-white/20 dark:border-black/30 font-mono text-[10px] shadow-inner overflow-hidden">
+                                            <div className="flex items-center justify-between mb-2 pb-1 border-b border-white/10 dark:border-black/10">
+                                                <span className="font-black uppercase tracking-widest opacity-60">EmailJS API Trace</span>
+                                                <span className="px-1.5 py-0.5 rounded bg-white/20 dark:bg-black/40 text-[9px]">{notification.debug.status || 'N/A'}</span>
+                                            </div>
+                                            <div className="overflow-auto max-h-48 custom-scrollbar">
+                                                <pre className="whitespace-pre-wrap">{JSON.stringify(notification.debug, null, 2)}</pre>
+                                            </div>
+                                        </div>
+                                    )}
                                 </AlertDescription>
                             </div>
                             <Button

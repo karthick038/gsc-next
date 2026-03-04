@@ -52,18 +52,7 @@ export async function POST(request) {
         sitemap.errorCount = result.summary.errorCount;
         await sitemap.save();
 
-        // 4. Save Log
-        const log = await HealthCheckLog.create({
-            userId,
-            sitemapId,
-            feedpath: sitemap.feedpath,
-            status: result.status,
-            summary: result.summary,
-            errorLogs: result.errors,
-            checkedAt: new Date(),
-        });
-
-        // 5. Find recipient email
+        // 5. Send Email if necessary and capture response
         // We want to send to the user's personal email or the specific accountEmail configured for this site.
         const user = await User.findById(userId);
         let recipientEmail = user?.email;
@@ -79,6 +68,7 @@ export async function POST(request) {
             }
         }
 
+        let emailResponse = null;
         if (recipientEmail && result.status !== "SUCCESS") {
             console.log(`[HEALTH-CHECK] Triggering email report to: ${recipientEmail} for sitemap: ${sitemap.feedpath}`);
             const emailResult = await sendHealthCheckEmail({
@@ -89,11 +79,24 @@ export async function POST(request) {
                 errorLogs: result.errors,
             });
             console.log(`[HEALTH-CHECK] Email send result:`, emailResult);
+            emailResponse = emailResult.rawResponse;
         } else if (!recipientEmail) {
             console.warn(`[HEALTH-CHECK] No email recipient found for health check report (User: ${userId})`);
         } else {
             console.log(`[HEALTH-CHECK] Check successful, skipping email for: ${sitemap.feedpath}`);
         }
+
+        // 6. Save Log (with emailResponse if available)
+        const log = await HealthCheckLog.create({
+            userId,
+            sitemapId,
+            feedpath: sitemap.feedpath,
+            status: result.status,
+            summary: result.summary,
+            errorLogs: result.errors,
+            emailResponse: emailResponse,
+            checkedAt: new Date(),
+        });
 
         return NextResponse.json({ success: true, logId: log._id });
 

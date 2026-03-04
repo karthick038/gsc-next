@@ -185,12 +185,38 @@ export async function sendHealthCheckEmail({
 
             if (!response.ok) {
                 const errorText = await response.text();
+                const errorData = {
+                    status: response.status,
+                    statusText: response.statusText,
+                    body: errorText,
+                    debug: {
+                        serviceId: payload.service_id,
+                        templateId: payload.template_id,
+                        publicKey: payload.user_id,
+                        recipient: to,
+                        timestamp: new Date().toISOString()
+                    }
+                };
                 console.error(`EmailJS Send Failed: ${response.status} - ${errorText}`);
-                throw new Error(`EmailJS Error: ${response.status} - ${errorText}`);
+                return { success: false, error: `EmailJS Error: ${response.status}`, rawResponse: errorData };
             }
 
+            const successText = await response.text();
+            const successData = {
+                status: response.status,
+                statusText: response.statusText,
+                body: successText,
+                debug: {
+                    serviceId: payload.service_id,
+                    templateId: payload.template_id,
+                    publicKey: payload.user_id,
+                    recipient: to,
+                    timestamp: new Date().toISOString()
+                }
+            };
+
             console.log(`Success email sent to ${to} via EmailJS API`);
-            return { success: true };
+            return { success: true, rawResponse: successData };
         }
 
         // Default: Brevo
