@@ -30,12 +30,20 @@ export async function PATCH(request) {
 
     try {
         const body = await request.json();
-        const { siteTitle, logoUrl, faviconUrl, logoWidth, logoHeight, brevoApiKey, senderEmail } = body;
+        const {
+            siteTitle, logoUrl, faviconUrl, logoWidth, logoHeight,
+            emailProvider, brevoApiKey, senderEmail,
+            emailjsServiceId, emailjsTemplateId, emailjsPublicKey, emailjsPrivateKey
+        } = body;
 
         await connectDB();
         const updatedSettings = await Settings.findOneAndUpdate(
             {},
-            { siteTitle, logoUrl, faviconUrl, logoWidth, logoHeight, brevoApiKey, senderEmail },
+            {
+                siteTitle, logoUrl, faviconUrl, logoWidth, logoHeight,
+                emailProvider, brevoApiKey, senderEmail,
+                emailjsServiceId, emailjsTemplateId, emailjsPublicKey, emailjsPrivateKey
+            },
             { upsert: true, new: true }
         );
 

@@ -3,20 +3,12 @@ import connectDB from "./db";
 import Settings from "@/models/Settings";
 
 /**
- * Initializes and returns the Brevo API instance with the configured key.
+ * Fetches settings for email configuration
  */
-async function getBrevoApi() {
+async function getEmailSettings() {
     await connectDB();
     const settings = await Settings.findOne({});
-    const apiKey = settings?.brevoApiKey || process.env.BREVO_API_KEY;
-
-    if (!apiKey) {
-        throw new Error("Brevo API Key is not configured.");
-    }
-
-    const client = new BrevoClient({ apiKey });
-
-    return { client, settings };
+    return settings || {};
 }
 
 const APP_NAME = "Google Search Console Analytics";
@@ -152,8 +144,63 @@ export async function sendHealthCheckEmail({
     `;
 
     try {
-        const { client, settings } = await getBrevoApi();
+        const settings = await getEmailSettings();
+        const provider = settings?.emailProvider || "brevo";
 
+        if (provider === "emailjs") {
+            const supportEmail = settings?.senderEmail || "support@colorwhistle.com";
+            const websiteLink = process.env.NEXTAUTH_URL || "http://localhost:3000";
+
+            // Format error rows for EmailJS template
+            const errorRowsHtml = errors.slice(0, 10).map(err => `
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #e5e7eb;">${err.url}</td>
+                    <td style="padding: 8px; border: 1px solid #e5e7eb; color: #b91c1c;">${err.type}</td>
+                    <td style="padding: 8px; border: 1px solid #e5e7eb;">${err.code || '-'}</td>
+                    <td style="padding: 8px; border: 1px solid #e5e7eb;">${err.message || 'Issue detected during health check.'}</td>
+                </tr>
+            `).join('');
+
+            const templateParams = {
+                to_email: to,
+                website_link: websiteLink,
+                company_name: settings?.siteTitle || APP_NAME,
+                sitemap_url: sitemapUrl,
+                checked_time: checkDate,
+                total_urls: summary.totalUrls || 0,
+                total_errors: errors.length,
+                error_rows: errorRowsHtml || "<tr><td colspan='4' style='padding:8px; text-align:center;'>No critical errors found.</td></tr>",
+                support_email: supportEmail
+            };
+
+            const payload = {
+                service_id: settings.emailjsServiceId,
+                template_id: settings.emailjsTemplateId || "template_ds18osi",
+                user_id: settings.emailjsPublicKey,
+                accessToken: settings.emailjsPrivateKey,
+                template_params: templateParams
+            };
+
+            const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`EmailJS Error: ${response.status} - ${errorText}`);
+            }
+
+            console.log(`Success email sent to ${to} via EmailJS API`);
+            return { success: true };
+        }
+
+        // Default: Brevo
+        const apiKey = settings?.brevoApiKey || process.env.BREVO_API_KEY;
+        if (!apiKey) throw new Error("Brevo API Key is not configured.");
+
+        const client = new BrevoClient({ apiKey });
         const sender = {
             name: settings?.siteTitle || APP_NAME,
             email: settings?.senderEmail || settings?.smtpUser || process.env.SMTP_FROM || "notifications@gsc-dashboard.com"
@@ -169,7 +216,7 @@ export async function sendHealthCheckEmail({
         console.log(`Success email sent to ${to} via Brevo API`);
         return { success: true };
     } catch (err) {
-        console.error("Failed to send email via Brevo API:", err.response?.body || err.message);
-        return { success: false, error: err.response?.body?.message || err.message };
+        console.error("Failed to send email:", err.message);
+        return { success: false, error: err.message };
     }
 }
