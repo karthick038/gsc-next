@@ -133,6 +133,7 @@ export async function GET(request) {
                         healthStatus: localData?.status || "PENDING",
                         lastHealthCheckAt: localData?.lastCheckedAt || null,
                         localErrorCount: localData?.errorCount || 0,
+                        accountEmail: localData?.accountEmail || null,
                     };
                 });
 
