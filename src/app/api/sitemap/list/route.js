@@ -5,6 +5,7 @@ import ServiceAccount from "@/models/ServiceAccount";
 import { google } from "googleapis";
 import { decrypt } from "@/lib/encryption";
 import Sitemap from "@/models/Sitemap";
+import HealthCheckLog from "@/models/HealthCheckLog";
 
 export const dynamic = "force-dynamic";
 
