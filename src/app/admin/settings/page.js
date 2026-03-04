@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Settings as SettingsIcon, Upload, Globe, Image as ImageIcon, Check, Loader2, Save, Mail, Server, Key, User } from "lucide-react";
+import { Settings as SettingsIcon, Upload, Globe, Image as ImageIcon, Check, Loader2, Save, Mail, Server, Key, User, Zap, ShieldCheck, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { FaviconCropModal } from "@/components/admin/favicon-crop-modal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 export default function AdminSettingsPage() {
     const { data: session } = useSession();
@@ -21,8 +22,13 @@ export default function AdminSettingsPage() {
         faviconUrl: "",
         logoWidth: "",
         logoHeight: "",
+        emailProvider: "brevo",
         brevoApiKey: "",
         senderEmail: "",
+        emailjsServiceId: "",
+        emailjsTemplateId: "",
+        emailjsPublicKey: "",
+        emailjsPrivateKey: "",
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -41,7 +47,12 @@ export default function AdminSettingsPage() {
                         ...data,
                         logoWidth: data.logoWidth || "",
                         logoHeight: data.logoHeight || "",
+                        emailProvider: data.emailProvider || "brevo",
                         senderEmail: data.senderEmail || "",
+                        emailjsServiceId: data.emailjsServiceId || "",
+                        emailjsTemplateId: data.emailjsTemplateId || "",
+                        emailjsPublicKey: data.emailjsPublicKey || "",
+                        emailjsPrivateKey: data.emailjsPrivateKey || "",
                     });
                 }
             } catch (error) {
@@ -155,8 +166,13 @@ export default function AdminSettingsPage() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
+                    emailProvider: settings.emailProvider,
                     brevoApiKey: settings.brevoApiKey,
                     senderEmail: settings.senderEmail,
+                    emailjsServiceId: settings.emailjsServiceId,
+                    emailjsTemplateId: settings.emailjsTemplateId,
+                    emailjsPublicKey: settings.emailjsPublicKey,
+                    emailjsPrivateKey: settings.emailjsPrivateKey,
                 }),
             });
 
@@ -186,7 +202,7 @@ export default function AdminSettingsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Admin Settings</h1>
-                    <p className="text-sm text-zinc-500 mt-1">Manage global branding, including the browser favicon and dashboard logo.</p>
+                    <p className="text-sm text-zinc-500 mt-1">Manage global branding, branding, and email notifications.</p>
                 </div>
                 <Button
                     onClick={handleSave}
@@ -363,81 +379,168 @@ export default function AdminSettingsPage() {
                 </TabsContent>
 
                 <TabsContent value="email">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <Card className="border-zinc-200 shadow-sm">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2 text-lg text-emerald-600">
-                                    <Mail className="h-5 w-5" />
-                                    Brevo API Configuration
-                                </CardTitle>
-                                <CardDescription>Configure Brevo (formerly Sendinblue) using your API Key.</CardDescription>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <Card className="lg:col-span-2 border-zinc-200 shadow-sm overflow-hidden">
+                            <CardHeader className="bg-zinc-50/50 border-bottom border-zinc-100">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <CardTitle className="text-lg flex items-center gap-2">
+                                            <Mail className="h-5 w-5 text-emerald-600" />
+                                            Email Provider Settings
+                                        </CardTitle>
+                                        <CardDescription>Select and configure your preferred email provider.</CardDescription>
+                                    </div>
+                                    <div className="flex items-center bg-zinc-100 p-1 rounded-lg border border-zinc-200">
+                                        <button
+                                            onClick={() => setSettings({ ...settings, emailProvider: "brevo" })}
+                                            className={cn(
+                                                "px-3 py-1.5 text-xs font-bold rounded-md transition-all",
+                                                settings.emailProvider === "brevo" ? "bg-white text-emerald-600 shadow-sm" : "text-zinc-500 hover:text-zinc-800"
+                                            )}
+                                        >
+                                            Brevo
+                                        </button>
+                                        <button
+                                            onClick={() => setSettings({ ...settings, emailProvider: "emailjs" })}
+                                            className={cn(
+                                                "px-3 py-1.5 text-xs font-bold rounded-md transition-all",
+                                                settings.emailProvider === "emailjs" ? "bg-white text-blue-600 shadow-sm" : "text-zinc-500 hover:text-zinc-800"
+                                            )}
+                                        >
+                                            EmailJS
+                                        </button>
+                                    </div>
+                                </div>
                             </CardHeader>
-                            <CardContent className="space-y-5">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
-                                        <Key className="h-3 w-3" /> Brevo API Key
-                                    </label>
-                                    <Input
-                                        type="password"
-                                        value={settings.brevoApiKey}
-                                        onChange={(e) => setSettings({ ...settings, brevoApiKey: e.target.value })}
-                                        placeholder="xkeysib-..."
-                                        className="h-10 border-zinc-200"
-                                    />
-                                    <p className="text-[10px] text-zinc-400 italic">Enter your v3 API key from the Brevo SMTP & API settings page.</p>
-                                </div>
+                            <CardContent className="p-6 space-y-6">
+                                {settings.emailProvider === "brevo" ? (
+                                    <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-300">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                                <Key className="h-3 w-3" /> Brevo API Key
+                                            </label>
+                                            <Input
+                                                type="password"
+                                                value={settings.brevoApiKey}
+                                                onChange={(e) => setSettings({ ...settings, brevoApiKey: e.target.value })}
+                                                placeholder="xkeysib-..."
+                                                className="h-10 border-zinc-200"
+                                            />
+                                            <p className="text-[10px] text-zinc-400 italic">Enter your v3 API key from the Brevo SMTP & API settings page.</p>
+                                        </div>
 
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
-                                        <User className="h-3 w-3" /> Sender Email
-                                    </label>
-                                    <Input
-                                        type="email"
-                                        value={settings.senderEmail}
-                                        onChange={(e) => setSettings({ ...settings, senderEmail: e.target.value })}
-                                        placeholder="verified@example.com"
-                                        className="h-10 border-zinc-200"
-                                    />
-                                    <p className="text-[10px] text-zinc-400 italic">This email must be a <strong>Verified Sender</strong> in your Brevo dashboard.</p>
-                                </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                                <User className="h-3 w-3" /> Sender Email
+                                            </label>
+                                            <Input
+                                                type="email"
+                                                value={settings.senderEmail}
+                                                onChange={(e) => setSettings({ ...settings, senderEmail: e.target.value })}
+                                                placeholder="verified@example.com"
+                                                className="h-10 border-zinc-200"
+                                            />
+                                            <p className="text-[10px] text-zinc-400 italic">This email must be a <strong>Verified Sender</strong> in your Brevo dashboard.</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-1 duration-300">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                                <Zap className="h-3 w-3" /> Service ID
+                                            </label>
+                                            <Input
+                                                value={settings.emailjsServiceId}
+                                                onChange={(e) => setSettings({ ...settings, emailjsServiceId: e.target.value })}
+                                                placeholder="service_..."
+                                                className="h-10 border-zinc-200"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                                <FileText className="h-3 w-3" /> Template ID
+                                            </label>
+                                            <Input
+                                                value={settings.emailjsTemplateId}
+                                                onChange={(e) => setSettings({ ...settings, emailjsTemplateId: e.target.value })}
+                                                placeholder="template_ds18osi"
+                                                className="h-10 border-zinc-200"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                                <ShieldCheck className="h-3 w-3" /> Public Key
+                                            </label>
+                                            <Input
+                                                value={settings.emailjsPublicKey}
+                                                onChange={(e) => setSettings({ ...settings, emailjsPublicKey: e.target.value })}
+                                                placeholder="user_..."
+                                                className="h-10 border-zinc-200"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                                <Key className="h-3 w-3" /> Private Key (Optional)
+                                            </label>
+                                            <Input
+                                                type="password"
+                                                value={settings.emailjsPrivateKey}
+                                                onChange={(e) => setSettings({ ...settings, emailjsPrivateKey: e.target.value })}
+                                                placeholder="Access Token"
+                                                className="h-10 border-zinc-200"
+                                            />
+                                        </div>
+                                        <div className="md:col-span-2 p-3 bg-blue-50/50 rounded-lg border border-blue-100">
+                                            <p className="text-[11px] text-blue-700 leading-relaxed">
+                                                <strong>EmailJS Template variables supported:</strong> <br />
+                                                <code>&#123;&#123;website_link&#125;&#125;</code>, <code>&#123;&#123;company_name&#125;&#125;</code>, <code>&#123;&#123;sitemap_url&#125;&#125;</code>,
+                                                <code>&#123;&#123;checked_time&#125;&#125;</code>, <code>&#123;&#123;total_urls&#125;&#125;</code>, <code>&#123;&#123;total_errors&#125;&#125;</code>,
+                                                <code>&#123;&#123;error_rows&#125;&#125;</code>, <code>&#123;&#123;support_email&#125;&#125;</code>
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
 
-                                <div className="pt-4 border-t border-zinc-100 flex gap-3">
+                                <div className="pt-6 border-t border-zinc-100 flex gap-3">
                                     <Button
                                         onClick={handleTestConnection}
                                         disabled={testing}
-                                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 shadow-sm transition-all active:scale-95"
+                                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 shadow-sm transition-all active:scale-95"
                                     >
                                         {testing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Server className="h-4 w-4 mr-2" />}
-                                        Test API Connection
+                                        Test {settings.emailProvider === "brevo" ? "Brevo" : "EmailJS"} Connection
                                     </Button>
                                     <Button
                                         onClick={handleSave}
                                         disabled={saving}
-                                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-10 shadow-sm transition-all active:scale-95"
+                                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11 shadow-sm transition-all active:scale-95"
                                     >
                                         {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                                        Save Settings
+                                        Save All Settings
                                     </Button>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <Card className="border-emerald-100 bg-emerald-50/20 shadow-sm">
+                        <Card className="border-zinc-200 bg-zinc-50/30 shadow-sm border-dashed">
                             <CardHeader>
-                                <CardTitle className="text-base text-emerald-800">Connection Guide</CardTitle>
+                                <CardTitle className="text-base text-zinc-800 flex items-center gap-2">
+                                    <Mail className="h-4 w-4" /> Provider Guide
+                                </CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-4 text-sm text-zinc-600">
-                                <p>To get your API Key from Brevo:</p>
-                                <ol className="list-decimal list-inside space-y-2 font-medium">
-                                    <li>Log in to your <strong>Brevo Dashboard</strong></li>
-                                    <li>Navigate to <strong>SMTP & API</strong> in the top-right menu</li>
-                                    <li>Select the <strong>API Keys</strong> tab</li>
-                                    <li>Click <strong>Generate a new API key</strong> and copy it</li>
-                                </ol>
-                                <Alert className="bg-white border-emerald-100 mt-4">
-                                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                                    <AlertDescription className="text-emerald-700 text-xs font-medium">
-                                        Using the <strong>API Method</strong> is more robust and bypasses many SMTP relay restrictions.
+                            <CardContent className="space-y-4 text-xs text-zinc-600">
+                                <section className="space-y-2">
+                                    <h4 className="font-bold text-emerald-700 uppercase tracking-tighter">Why Brevo?</h4>
+                                    <p>Direct API integration, higher reliability for system-critical alerts, and built-in email templating. Better for high-volume notification sending.</p>
+                                </section>
+                                <section className="space-y-2">
+                                    <h4 className="font-bold text-blue-700 uppercase tracking-tighter">Why EmailJS?</h4>
+                                    <p>Easier template management in their dashboard. Ideal if you already use EmailJS across multiple projects and want to centralize templates.</p>
+                                </section>
+                                <Alert className="bg-white border-zinc-200 mt-2">
+                                    <AlertCircle className="h-3 w-3" />
+                                    <AlertDescription className="text-[10px] text-zinc-500 leading-tight">
+                                        Changing provider switches the entire notification system to use the selected service for all health checks.
                                     </AlertDescription>
                                 </Alert>
                             </CardContent>

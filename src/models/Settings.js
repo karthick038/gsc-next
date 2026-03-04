@@ -18,11 +18,32 @@ const SettingsSchema = new mongoose.Schema(
         logoHeight: {
             type: Number,
         },
+        emailProvider: {
+            type: String,
+            enum: ["brevo", "emailjs"],
+            default: "brevo",
+        },
         brevoApiKey: {
             type: String,
             default: "",
         },
         senderEmail: {
+            type: String,
+            default: "",
+        },
+        emailjsServiceId: {
+            type: String,
+            default: "",
+        },
+        emailjsTemplateId: {
+            type: String,
+            default: "",
+        },
+        emailjsPublicKey: {
+            type: String,
+            default: "",
+        },
+        emailjsPrivateKey: {
             type: String,
             default: "",
         },

@@ -58,7 +58,7 @@ export async function POST(request) {
         // Use the most recent valid service account's clientEmail
         const serviceAccount = await ServiceAccount.findOne({ userId, isValid: true }).sort({ createdAt: -1 });
 
-        if (serviceAccount && serviceAccount.clientEmail) {
+        if (serviceAccount && serviceAccount.clientEmail && result.status !== "SUCCESS") {
             await sendHealthCheckEmail({
                 to: serviceAccount.clientEmail,
                 sitemapUrl: sitemap.feedpath,
