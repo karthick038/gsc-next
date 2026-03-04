@@ -12,6 +12,7 @@ import {
     KeyRound, Clock, Eye, Download, FileText, Info, Send, ArrowRightLeft, Search, ExternalLink, X
 } from "lucide-react";
 import { useConnection } from "@/hooks/use-connection";
+import { cn } from "@/lib/utils";
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ statusLabel, errors, warnings }) {
@@ -1054,6 +1055,16 @@ export default function SitemapPage() {
         prevSitemapsRef.current = sitemaps;
     }, [sitemaps]);
 
+    // Auto-dismiss notification after 10 seconds
+    useEffect(() => {
+        if (notification) {
+            const timer = setTimeout(() => {
+                setNotification(null);
+            }, 10000);
+            return () => clearTimeout(timer);
+        }
+    }, [notification]);
+
     // Pill colour palette (mirrors indexing page)
     const pillColors = [
         { border: "border-blue-400", selectBorder: "border-blue-600", text: "text-blue-600", hover: "hover:border-blue-600" },
@@ -1180,35 +1191,44 @@ export default function SitemapPage() {
     return (
         <div className="w-full max-w-6xl mx-auto space-y-6">
             {notification && (
-                <Alert
-                    variant={notification.type === "success" ? "default" : "destructive"}
-                    className={notification.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800 animate-in fade-in slide-in-from-top-4" : "animate-in fade-in slide-in-from-top-4"}
-                >
-                    <div className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-3">
-                            {notification.type === "success" ? (
-                                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                            ) : (
-                                <AlertCircle className="h-5 w-5" />
-                            )}
-                            <div>
-                                <AlertTitle className="font-bold">
-                                    {notification.type === "success" ? "Processing Complete" : "Sitemap Errors Detected"}
-                                </AlertTitle>
-                                <AlertDescription>{notification.text}</AlertDescription>
+                <div className="fixed bottom-6 right-6 z-50 w-full max-w-sm animate-in fade-in slide-in-from-right-full duration-500">
+                    <Alert
+                        variant={notification.type === "success" ? "default" : "destructive"}
+                        className={cn(
+                            "shadow-2xl border-2",
+                            notification.type === "success"
+                                ? "border-emerald-500 bg-white text-emerald-900"
+                                : "border-red-500 bg-white text-red-900"
+                        )}
+                    >
+                        <div className="flex items-start gap-4">
+                            <div className="mt-1">
+                                {notification.type === "success" ? (
+                                    <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+                                ) : (
+                                    <AlertCircle className="h-6 w-6 text-red-600" />
+                                )}
                             </div>
+                            <div className="flex-1 space-y-1">
+                                <AlertTitle className="font-black uppercase tracking-tight text-sm">
+                                    {notification.type === "success" ? "Success" : "Sitemap Error"}
+                                </AlertTitle>
+                                <AlertDescription className="text-xs font-medium leading-relaxed opacity-90">
+                                    {notification.text}
+                                </AlertDescription>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setNotification(null)}
+                                className="h-6 w-6 p-0 hover:bg-zinc-100 rounded-full shrink-0"
+                            >
+                                <X className="h-4 w-4 text-zinc-400" />
+                                <span className="sr-only">Dismiss</span>
+                            </Button>
                         </div>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setNotification(null)}
-                            className="h-8 w-8 p-0 hover:bg-zinc-200/50"
-                        >
-                            <X className="h-4 w-4" />
-                            <span className="sr-only">Dismiss</span>
-                        </Button>
-                    </div>
-                </Alert>
+                    </Alert>
+                </div>
             )}
 
             {/* ── No credentials state ── */}

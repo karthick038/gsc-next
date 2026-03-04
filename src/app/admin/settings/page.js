@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { FaviconCropModal } from "@/components/admin/favicon-crop-modal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export default function AdminSettingsPage() {
@@ -30,6 +31,7 @@ export default function AdminSettingsPage() {
         emailjsPublicKey: "",
         emailjsPrivateKey: "",
     });
+    const [activeSavedProvider, setActiveSavedProvider] = useState("brevo");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [testing, setTesting] = useState(false);
@@ -54,6 +56,7 @@ export default function AdminSettingsPage() {
                         emailjsPublicKey: data.emailjsPublicKey || "",
                         emailjsPrivateKey: data.emailjsPrivateKey || "",
                     });
+                    setActiveSavedProvider(data.emailProvider || "brevo");
                 }
             } catch (error) {
                 console.error("Failed to fetch settings", error);
@@ -146,6 +149,7 @@ export default function AdminSettingsPage() {
                 router.refresh();
                 setMessage({ type: "success", text: "Settings saved successfully!" });
                 setSettings(prev => ({ ...prev, siteTitle, logoWidth, logoHeight }));
+                setActiveSavedProvider(payload.emailProvider);
             } else {
                 const data = await res.json();
                 setMessage({ type: "error", text: data.error || "Failed to save settings" });
@@ -394,20 +398,26 @@ export default function AdminSettingsPage() {
                                         <button
                                             onClick={() => setSettings({ ...settings, emailProvider: "brevo" })}
                                             className={cn(
-                                                "px-3 py-1.5 text-xs font-bold rounded-md transition-all",
+                                                "px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-2",
                                                 settings.emailProvider === "brevo" ? "bg-white text-emerald-600 shadow-sm" : "text-zinc-500 hover:text-zinc-800"
                                             )}
                                         >
                                             Brevo
+                                            {activeSavedProvider === "brevo" && (
+                                                <Badge className="h-4 px-1 text-[8px] bg-emerald-100 text-emerald-700 border-emerald-200">ACTIVE</Badge>
+                                            )}
                                         </button>
                                         <button
                                             onClick={() => setSettings({ ...settings, emailProvider: "emailjs" })}
                                             className={cn(
-                                                "px-3 py-1.5 text-xs font-bold rounded-md transition-all",
+                                                "px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-2",
                                                 settings.emailProvider === "emailjs" ? "bg-white text-blue-600 shadow-sm" : "text-zinc-500 hover:text-zinc-800"
                                             )}
                                         >
                                             EmailJS
+                                            {activeSavedProvider === "emailjs" && (
+                                                <Badge className="h-4 px-1 text-[8px] bg-blue-100 text-blue-700 border-blue-200">ACTIVE</Badge>
+                                            )}
                                         </button>
                                     </div>
                                 </div>
