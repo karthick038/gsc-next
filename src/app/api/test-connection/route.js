@@ -48,7 +48,7 @@ export async function POST(request) {
         }
 
         const accountResults = [];
-        const permissionMap = new Map(); // siteUrl -> permissionLevel
+        const permissionMap = new Map(); // siteUrl -> { permissionLevel, accountEmail }
 
         for (const acc of accounts) {
             try {
@@ -79,7 +79,10 @@ export async function POST(request) {
                     // Priority to 'siteOwner' if multiple accounts have access
                     const existing = permissionMap.get(normalized);
                     if (!existing || s.permissionLevel === "siteOwner") {
-                        permissionMap.set(normalized, s.permissionLevel);
+                        permissionMap.set(normalized, {
+                            permissionLevel: s.permissionLevel,
+                            accountEmail: acc.clientEmail
+                        });
                     }
                 });
 
@@ -113,13 +116,15 @@ export async function POST(request) {
             const normalizedUserUrl = url.toLowerCase().replace(/\/$/, "").replace(/^https?:\/\//, "").replace(/^www\./, "");
 
             let matchedPermission = "none";
+            let matchedEmail = null;
             let hasAccess = false;
 
-            for (const [gSite, perm] of permissionMap.entries()) {
+            for (const [gSite, data] of permissionMap.entries()) {
                 const normalizedGSite = gSite.replace(/^sc-domain:/, "").replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
                 if (normalizedGSite === normalizedUserUrl) {
                     hasAccess = true;
-                    matchedPermission = perm;
+                    matchedPermission = data.permissionLevel;
+                    matchedEmail = data.accountEmail;
                     break;
                 }
             }
@@ -128,6 +133,7 @@ export async function POST(request) {
                 url,
                 status: hasAccess ? "SUCCESS" : "ERROR",
                 permissionLevel: matchedPermission,
+                accountEmail: matchedEmail,
                 error: hasAccess ? null : "Access denied for these credentials."
             };
         });
@@ -156,6 +162,7 @@ export async function POST(request) {
                     url: r.url,
                     status: r.status,
                     permissionLevel: r.permissionLevel || "none",
+                    accountEmail: r.accountEmail,
                     error: null
                 });
             } else {

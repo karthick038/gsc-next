@@ -74,7 +74,7 @@ export async function DELETE(request) {
     const user = await User.findById(userId);
 
     if (user) {
-      const permissionMap = new Map(); // siteUrl -> permissionLevel
+      const permissionMap = new Map(); // siteUrl -> { permissionLevel, accountEmail }
 
       // 1. Build a map of ALL sites accessible by ANY remaining service account
       for (const acc of remainingAccounts) {
@@ -100,7 +100,10 @@ export async function DELETE(request) {
             const existing = permissionMap.get(normalized);
             // siteOwner has priority
             if (!existing || s.permissionLevel === "siteOwner") {
-              permissionMap.set(normalized, s.permissionLevel);
+              permissionMap.set(normalized, {
+                permissionLevel: s.permissionLevel,
+                accountEmail: acc.clientEmail
+              });
             }
           });
         } catch (err) {
@@ -114,10 +117,11 @@ export async function DELETE(request) {
         const normalizedUserUrl = site.url.toLowerCase().replace(/\/$/, "").replace(/^https?:\/\//, "").replace(/^www\./, "");
 
         let hasAccess = false;
-        for (const [gSite, perm] of permissionMap.entries()) {
+        for (const [gSite, data] of permissionMap.entries()) {
           const normalizedGSite = gSite.replace(/^sc-domain:/, "").replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
           if (normalizedGSite === normalizedUserUrl) {
-            site.permissionLevel = perm; // Update permission level
+            site.permissionLevel = data.permissionLevel; // Update permission level
+            site.accountEmail = data.accountEmail; // Update account email
             hasAccess = true;
             break;
           }

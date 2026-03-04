@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import {
     UploadCloud, CheckCircle, CheckCircle2, AlertCircle, AlertTriangle, Loader2, FileText,
-    Trash2, KeyRound, Activity, Globe, Plus, Minus, XCircle, Info, RefreshCcw, ShieldAlert, X
+    Trash2, KeyRound, Activity, Globe, Plus, Minus, XCircle, Info, RefreshCcw, ShieldAlert, X, Mail
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useConnection } from "@/hooks/use-connection";
@@ -647,28 +647,42 @@ export default function UploadJSON() {
                                         </p>
                                     </div>
 
-                                    {/* Row 3: Permission Level */}
-                                    <div className="flex flex-col space-y-2 pt-1">
-                                        <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-widest pl-0.5">Permission Level</p>
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2 text-zinc-600 bg-zinc-50 border border-zinc-100 px-2.5 py-1 rounded-md">
-                                                <KeyRound className="h-3.5 w-3.5 text-zinc-400" />
-                                                <span className="text-xs font-semibold">
-                                                    {formatPermission(site.permissionLevel)}
-                                                </span>
-                                            </div>
+                                    {/* Row 3: Permission Level & Service Account Email */}
+                                    <div className="flex flex-col space-y-3 pt-1">
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-widest pl-0.5">Permission Level</p>
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2 text-zinc-600 bg-zinc-50 border border-zinc-100 px-2.5 py-1 rounded-md">
+                                                    <KeyRound className="h-3.5 w-3.5 text-zinc-400" />
+                                                    <span className="text-xs font-semibold">
+                                                        {formatPermission(site.permissionLevel)}
+                                                    </span>
+                                                </div>
 
-                                            {site.status === "ERROR" && (
-                                                <Button
-                                                    variant="link"
-                                                    size="sm"
-                                                    className="h-auto p-0 text-xs text-blue-600 hover:text-blue-700 h-7"
-                                                    onClick={() => { setShowForm(true); setNewSiteUrl(site.url); }}
-                                                >
-                                                    Retry Connection
-                                                </Button>
-                                            )}
+                                                {site.status === "ERROR" && (
+                                                    <Button
+                                                        variant="link"
+                                                        size="sm"
+                                                        className="h-auto p-0 text-xs text-blue-600 hover:text-blue-700 h-7"
+                                                        onClick={() => { setShowForm(true); setNewSiteUrl(site.url); }}
+                                                    >
+                                                        Retry Connection
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </div>
+
+                                        {site.accountEmail && (
+                                            <div className="space-y-1.5 border-t border-zinc-50 pt-3 pb-2">
+                                                <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-widest pl-0.5">Service Account</p>
+                                                <div className="flex items-center gap-2 text-zinc-500 hover:text-zinc-700 transition-colors">
+                                                    <Mail className="h-3 w-3 text-zinc-400" />
+                                                    <span className="text-[11px] font-medium truncate" title={site.accountEmail}>
+                                                        {site.accountEmail}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </CardContent>
                             </Card>
