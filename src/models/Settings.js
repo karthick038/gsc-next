@@ -39,6 +39,14 @@ const SettingsSchema = new mongoose.Schema(
             type: String,
             default: "",
         },
+        emailjsTemplateIdSuccess: {
+            type: String,
+            default: "",
+        },
+        emailjsTemplateIdFailed: {
+            type: String,
+            default: "",
+        },
         emailjsPublicKey: {
             type: String,
             default: "",

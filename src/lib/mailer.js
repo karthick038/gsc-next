@@ -152,7 +152,10 @@ export async function sendHealthCheckEmail({
             const supportEmail = settings?.senderEmail || "support@colorwhistle.com";
             const websiteLink = process.env.NEXTAUTH_URL || "http://localhost:3000";
             const serviceId = settings?.emailjsServiceId;
-            const templateId = settings?.emailjsTemplateId;
+            // ✅ Use status-specific template, fall back to the single generic one
+            const templateId = isSuccess
+                ? (settings?.emailjsTemplateIdSuccess || settings?.emailjsTemplateId)
+                : (settings?.emailjsTemplateIdFailed || settings?.emailjsTemplateId);
             const publicKey = settings?.emailjsPublicKey;
             const privateKey = settings?.emailjsPrivateKey;
 

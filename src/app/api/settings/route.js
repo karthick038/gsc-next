@@ -33,7 +33,8 @@ export async function PATCH(request) {
         const {
             siteTitle, logoUrl, faviconUrl, logoWidth, logoHeight,
             emailProvider, brevoApiKey, senderEmail,
-            emailjsServiceId, emailjsTemplateId, emailjsPublicKey, emailjsPrivateKey
+            emailjsServiceId, emailjsTemplateId, emailjsTemplateIdSuccess, emailjsTemplateIdFailed,
+            emailjsPublicKey, emailjsPrivateKey
         } = body;
 
         await connectDB();
@@ -42,7 +43,8 @@ export async function PATCH(request) {
             {
                 siteTitle, logoUrl, faviconUrl, logoWidth, logoHeight,
                 emailProvider, brevoApiKey, senderEmail,
-                emailjsServiceId, emailjsTemplateId, emailjsPublicKey, emailjsPrivateKey
+                emailjsServiceId, emailjsTemplateId, emailjsTemplateIdSuccess, emailjsTemplateIdFailed,
+                emailjsPublicKey, emailjsPrivateKey
             },
             { upsert: true, new: true }
         );

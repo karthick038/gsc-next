@@ -28,6 +28,8 @@ export default function AdminSettingsPage() {
         senderEmail: "",
         emailjsServiceId: "",
         emailjsTemplateId: "",
+        emailjsTemplateIdSuccess: "",
+        emailjsTemplateIdFailed: "",
         emailjsPublicKey: "",
         emailjsPrivateKey: "",
     });
@@ -53,6 +55,8 @@ export default function AdminSettingsPage() {
                         senderEmail: data.senderEmail || "",
                         emailjsServiceId: data.emailjsServiceId || "",
                         emailjsTemplateId: data.emailjsTemplateId || "",
+                        emailjsTemplateIdSuccess: data.emailjsTemplateIdSuccess || "",
+                        emailjsTemplateIdFailed: data.emailjsTemplateIdFailed || "",
                         emailjsPublicKey: data.emailjsPublicKey || "",
                         emailjsPrivateKey: data.emailjsPrivateKey || "",
                     });
@@ -175,6 +179,8 @@ export default function AdminSettingsPage() {
                     senderEmail: settings.senderEmail,
                     emailjsServiceId: settings.emailjsServiceId,
                     emailjsTemplateId: settings.emailjsTemplateId,
+                    emailjsTemplateIdSuccess: settings.emailjsTemplateIdSuccess,
+                    emailjsTemplateIdFailed: settings.emailjsTemplateIdFailed,
                     emailjsPublicKey: settings.emailjsPublicKey,
                     emailjsPrivateKey: settings.emailjsPrivateKey,
                 }),
@@ -466,16 +472,31 @@ export default function AdminSettingsPage() {
                                                 className="h-10 border-zinc-200"
                                             />
                                         </div>
+                                        {/* ── Template: Passed ── */}
                                         <div className="space-y-2">
                                             <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
-                                                <FileText className="h-3 w-3" /> Template ID
+                                                <FileText className="h-3 w-3 text-green-500" /> Passed Template ID
                                             </label>
                                             <Input
-                                                value={settings.emailjsTemplateId}
-                                                onChange={(e) => setSettings({ ...settings, emailjsTemplateId: e.target.value })}
-                                                placeholder="template_ds18osi"
+                                                value={settings.emailjsTemplateIdSuccess || ""}
+                                                onChange={(e) => setSettings({ ...settings, emailjsTemplateIdSuccess: e.target.value })}
+                                                placeholder="template_3esex02 (sent when no errors)"
                                                 className="h-10 border-zinc-200"
                                             />
+                                            <p className="text-[10px] text-green-600 font-medium">Sent when sitemap has <strong>no errors</strong></p>
+                                        </div>
+                                        {/* ── Template: Failed ── */}
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                                <FileText className="h-3 w-3 text-red-500" /> Failed Template ID
+                                            </label>
+                                            <Input
+                                                value={settings.emailjsTemplateIdFailed || ""}
+                                                onChange={(e) => setSettings({ ...settings, emailjsTemplateIdFailed: e.target.value })}
+                                                placeholder="template_ds18osi (sent when errors found)"
+                                                className="h-10 border-zinc-200"
+                                            />
+                                            <p className="text-[10px] text-red-500 font-medium">Sent when sitemap has <strong>errors</strong></p>
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
