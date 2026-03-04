@@ -14,7 +14,7 @@ import { sendHealthCheckEmail } from "@/lib/mailer";
 export async function POST(request) {
     try {
         const body = await request.json();
-        const { sitemapId, userId } = body;
+        const { sitemapId, userId, force = false } = body;
 
         if (!sitemapId || !userId) {
             return NextResponse.json({ error: "Missing sitemapId or userId" }, { status: 400 });
@@ -27,7 +27,15 @@ export async function POST(request) {
             return NextResponse.json({ error: "Sitemap not found" }, { status: 404 });
         }
 
-        // 1. Mark as Processing
+        // 1. Mark as Processing (unless already done recently and not forced)
+        if (!force && sitemap.status !== "PENDING" && sitemap.lastCheckedAt) {
+            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+            if (sitemap.lastCheckedAt > fiveMinutesAgo) {
+                console.log(`[HEALTH-CHECK] Skipping recent check for: ${sitemap.feedpath} (Force: ${force})`);
+                return NextResponse.json({ success: true, message: "Checked recently" });
+            }
+        }
+
         sitemap.status = "PROCESSING";
         await sitemap.save();
 
@@ -72,16 +80,19 @@ export async function POST(request) {
         }
 
         if (recipientEmail && result.status !== "SUCCESS") {
-            console.log(`Sending health check report to: ${recipientEmail} for sitemap: ${sitemap.feedpath}`);
-            await sendHealthCheckEmail({
+            console.log(`[HEALTH-CHECK] Triggering email report to: ${recipientEmail} for sitemap: ${sitemap.feedpath}`);
+            const emailResult = await sendHealthCheckEmail({
                 to: recipientEmail,
                 sitemapUrl: sitemap.feedpath,
                 status: result.status,
                 summary: result.summary,
                 errorLogs: result.errors,
             });
+            console.log(`[HEALTH-CHECK] Email send result:`, emailResult);
         } else if (!recipientEmail) {
-            console.warn(`No email recipient found for health check report (User: ${userId})`);
+            console.warn(`[HEALTH-CHECK] No email recipient found for health check report (User: ${userId})`);
+        } else {
+            console.log(`[HEALTH-CHECK] Check successful, skipping email for: ${sitemap.feedpath}`);
         }
 
         return NextResponse.json({ success: true, logId: log._id });
