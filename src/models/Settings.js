@@ -18,6 +18,10 @@ const SettingsSchema = new mongoose.Schema(
         logoHeight: {
             type: Number,
         },
+        brevoApiKey: {
+            type: String,
+            default: "",
+        },
     },
     {
         timestamps: true,

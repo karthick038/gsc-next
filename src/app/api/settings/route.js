@@ -30,16 +30,16 @@ export async function PATCH(request) {
 
     try {
         const body = await request.json();
-        const { siteTitle, logoUrl, faviconUrl, logoWidth, logoHeight } = body;
+        const { siteTitle, logoUrl, faviconUrl, logoWidth, logoHeight, brevoApiKey } = body;
 
         await connectDB();
-        const settings = await Settings.findOneAndUpdate(
+        const updatedSettings = await Settings.findOneAndUpdate(
             {},
-            { siteTitle, logoUrl, faviconUrl, logoWidth, logoHeight },
+            { siteTitle, logoUrl, faviconUrl, logoWidth, logoHeight, brevoApiKey },
             { upsert: true, new: true }
         );
 
-        return NextResponse.json(settings);
+        return NextResponse.json(updatedSettings);
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

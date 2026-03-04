@@ -78,7 +78,7 @@ async function run() {
         fs.appendFileSync('db-debug.log', " Ping successful!\n");
 
     } catch (error) {
-        fs.appendFileSync('db-debug.log', "\n❌ CONNECTION FAILED\n");
+        fs.appendFileSync('db-debug.log', "\n CONNECTION FAILED\n");
         fs.appendFileSync('db-debug.log', `Message: ${error.message}\n`);
         fs.appendFileSync('db-debug.log', `Code: ${error.code}\n`);
         fs.appendFileSync('db-debug.log', `Name: ${error.name}\n`);
