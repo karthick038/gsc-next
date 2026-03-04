@@ -3,6 +3,7 @@ import connectDB from "@/lib/db";
 import Sitemap from "@/models/Sitemap";
 import HealthCheckLog from "@/models/HealthCheckLog";
 import ServiceAccount from "@/models/ServiceAccount";
+import User from "@/models/User";
 import { performHealthCheck } from "@/lib/health-check-service";
 import { sendHealthCheckEmail } from "@/lib/mailer";
 
@@ -54,19 +55,32 @@ export async function POST(request) {
             checkedAt: new Date(),
         });
 
-        // 5. Find recipient email from ServiceAccount
-        // Use the most recent valid service account's clientEmail
-        const serviceAccount = await ServiceAccount.findOne({ userId, isValid: true }).sort({ createdAt: -1 });
+        // 5. Find recipient email
+        // We want to send to the user's personal email or the specific accountEmail configured for this site.
+        const user = await User.findById(userId);
+        let recipientEmail = user?.email;
 
-        if (serviceAccount && serviceAccount.clientEmail && result.status !== "SUCCESS") {
+        if (user && user.verifiedSites) {
+            const siteMatch = user.verifiedSites.find(vs => {
+                const normalizedVs = vs.url.toLowerCase().replace(/\/$/, "").replace(/^https?:\/\//, "").replace(/^www\./, "");
+                const normalizedSm = sitemap.siteUrl.toLowerCase().replace(/\/$/, "").replace(/^https?:\/\//, "").replace(/^www\./, "");
+                return normalizedVs === normalizedSm;
+            });
+            if (siteMatch?.accountEmail) {
+                recipientEmail = siteMatch.accountEmail;
+            }
+        }
+
+        if (recipientEmail && result.status !== "SUCCESS") {
+            console.log(`Sending health check report to: ${recipientEmail} for sitemap: ${sitemap.feedpath}`);
             await sendHealthCheckEmail({
-                to: serviceAccount.clientEmail,
+                to: recipientEmail,
                 sitemapUrl: sitemap.feedpath,
                 status: result.status,
                 summary: result.summary,
                 errorLogs: result.errors,
             });
-        } else {
+        } else if (!recipientEmail) {
             console.warn(`No email recipient found for health check report (User: ${userId})`);
         }
 

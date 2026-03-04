@@ -1041,12 +1041,12 @@ export default function SitemapPage() {
                     if (currentSm.healthStatus === "ERROR") {
                         setNotification({
                             type: "error",
-                            text: `The sitemap ${currentSm.feedpath} contains errors. The detailed error report has been sent to the configured email address.`
+                            text: `The sitemap ${currentSm.path} contains errors. The detailed error report has been sent to the configured email address.`
                         });
                     } else if (currentSm.healthStatus === "ACTIVE") {
                         setNotification({
                             type: "success",
-                            text: `Sitemap ${currentSm.feedpath} processed successfully with no errors.`
+                            text: `Sitemap ${currentSm.path} processed successfully with no errors.`
                         });
                     }
                 }
