@@ -151,6 +151,25 @@ export async function sendHealthCheckEmail({
         if (provider === "emailjs") {
             const supportEmail = settings?.senderEmail || "support@colorwhistle.com";
             const websiteLink = process.env.NEXTAUTH_URL || "http://localhost:3000";
+            const serviceId = settings?.emailjsServiceId;
+            const templateId = settings?.emailjsTemplateId;
+            const publicKey = settings?.emailjsPublicKey;
+            const privateKey = settings?.emailjsPrivateKey;
+
+            if (!serviceId || !templateId || !publicKey) {
+                const missingFields = [];
+                if (!serviceId) missingFields.push("Service ID");
+                if (!templateId) missingFields.push("Template ID");
+                if (!publicKey) missingFields.push("Public Key");
+                const errorData = {
+                    status: 0,
+                    statusText: "Configuration Error",
+                    body: `Missing EmailJS configuration: ${missingFields.join(", ")}`,
+                    debug: { serviceId, templateId, publicKey: publicKey ? "[SET]" : "[MISSING]", recipient: to, timestamp: new Date().toISOString() }
+                };
+                console.error("EmailJS config missing:", missingFields.join(", "));
+                return { success: false, error: "EmailJS configuration incomplete", rawResponse: errorData };
+            }
 
             // Format error rows for EmailJS template
             const errorRowsHtml = errorLogs.slice(0, 10).map(err => `
@@ -162,17 +181,24 @@ export async function sendHealthCheckEmail({
                 </tr>
             `).join('');
 
-            const templateParams = {
-                to_email: to,
-                website_link: websiteLink,
-                company_name: settings?.siteTitle || APP_NAME,
-                sitemap_url: sitemapUrl,
-                checked_time: checkDate,
-                total_urls: summary.totalUrls || 0,
-                total_errors: errorLogs.length,
-                error_rows: errorRowsHtml || "<tr><td colspan='4' style='padding:8px; text-align:center;'>No critical errors found.</td></tr>",
-                support_email: supportEmail,
-                active_provider: "EmailJS"
+            // ✅ FIX: build `payload` (was accidentally named `templateParams` before)
+            const payload = {
+                service_id: serviceId,
+                template_id: templateId,
+                user_id: publicKey,
+                accessToken: privateKey,
+                template_params: {
+                    to_email: to,
+                    website_link: websiteLink,
+                    company_name: settings?.siteTitle || APP_NAME,
+                    sitemap_url: sitemapUrl,
+                    checked_time: checkDate,
+                    total_urls: summary.totalUrls || 0,
+                    total_errors: errorLogs.length,
+                    error_rows: errorRowsHtml || "<tr><td colspan='4' style='padding:8px; text-align:center;'>No critical errors found.</td></tr>",
+                    support_email: supportEmail,
+                    active_provider: "EmailJS"
+                }
             };
 
             console.log("EmailJS Payload:", JSON.stringify({ ...payload, accessToken: "HIDDEN" }, null, 2));
@@ -190,9 +216,9 @@ export async function sendHealthCheckEmail({
                     statusText: response.statusText,
                     body: errorText,
                     debug: {
-                        serviceId: payload.service_id,
-                        templateId: payload.template_id,
-                        publicKey: payload.user_id,
+                        serviceId,
+                        templateId,
+                        publicKey: publicKey ? "[SET]" : "[MISSING]",
                         recipient: to,
                         timestamp: new Date().toISOString()
                     }
@@ -207,9 +233,9 @@ export async function sendHealthCheckEmail({
                 statusText: response.statusText,
                 body: successText,
                 debug: {
-                    serviceId: payload.service_id,
-                    templateId: payload.template_id,
-                    publicKey: payload.user_id,
+                    serviceId,
+                    templateId,
+                    publicKey: publicKey ? "[SET]" : "[MISSING]",
                     recipient: to,
                     timestamp: new Date().toISOString()
                 }
