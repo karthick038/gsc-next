@@ -88,11 +88,18 @@ export async function GET(request) {
                 // Fetch local health data
                 const localSitemaps = await Sitemap.find({ userId: session.user.id, siteUrl });
 
+                // Fetch latest logs to get emailResponse
+                const latestLogs = await HealthCheckLog.find({
+                    userId: session.user.id,
+                    sitemapId: { $in: localSitemaps.map(ls => ls._id) }
+                }).sort({ checkedAt: -1 });
+
                 const enriched = sitemaps.map((sm) => {
                     const contents = sm.contents || [];
 
                     // Find local data for this sitemap
                     const localData = localSitemaps.find(ls => ls.feedpath === sm.path);
+                    const latestLog = latestLogs.find(log => log.sitemapId.toString() === localData?._id?.toString());
 
                     // Find the 'web' content type — this is what GSC dashboard counts as "Discovered"
                     const webContent = contents.find((c) => c.type === "web");
@@ -134,6 +141,7 @@ export async function GET(request) {
                         lastHealthCheckAt: localData?.lastCheckedAt || null,
                         localErrorCount: localData?.errorCount || 0,
                         accountEmail: localData?.accountEmail || null,
+                        emailResponse: latestLog?.emailResponse || null,
                     };
                 });
 

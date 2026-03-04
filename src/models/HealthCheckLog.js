@@ -39,9 +39,14 @@ const HealthCheckLogSchema = new mongoose.Schema({
             description: String,
         }
     ],
+    emailResponse: {
+        type: mongoose.Schema.Types.Mixed,
+        default: null
+    },
     checkedAt: {
         type: Date,
         default: Date.now,
+        index: true,
     },
 });
 
