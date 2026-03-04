@@ -22,6 +22,10 @@ const SettingsSchema = new mongoose.Schema(
             type: String,
             default: "",
         },
+        senderEmail: {
+            type: String,
+            default: "",
+        },
     },
     {
         timestamps: true,

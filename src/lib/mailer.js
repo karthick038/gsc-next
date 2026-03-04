@@ -156,7 +156,7 @@ export async function sendHealthCheckEmail({
 
         const sender = {
             name: settings?.siteTitle || APP_NAME,
-            email: settings?.smtpUser || process.env.SMTP_FROM || "notifications@gsc-dashboard.com"
+            email: settings?.senderEmail || settings?.smtpUser || process.env.SMTP_FROM || "notifications@gsc-dashboard.com"
         };
 
         await client.transactionalEmails.sendTransacEmail({
