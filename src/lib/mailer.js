@@ -21,7 +21,7 @@ export async function sendHealthCheckEmail({
     sitemapUrl,
     status, // SUCCESS or ERROR
     summary,
-    errors = [],
+    errorLogs = [],
 }) {
     if (!to) return;
 
@@ -99,12 +99,12 @@ export async function sendHealthCheckEmail({
                     ` : `
                     <div class="summary-item">
                         <span class="label">Critical Issues</span>
-                        <span class="value" style="color: #ef4444;">${errors.length} detected</span>
+                        <span class="value" style="color: #ef4444;">${errorLogs.length} detected</span>
                     </div>
                     `}
                 </div>
 
-                ${!isSuccess && errors.length > 0 ? `
+                ${!isSuccess && errorLogs.length > 0 ? `
                 <h3 style="margin-top: 32px; font-size: 16px; color: #111827;">Error Details</h3>
                 <table class="error-table">
                     <thead>
@@ -115,7 +115,7 @@ export async function sendHealthCheckEmail({
                         </tr>
                     </thead>
                     <tbody>
-                        ${errors.slice(0, 10).map(err => `
+                        ${errorLogs.slice(0, 10).map(err => `
                         <tr>
                             <td class="error-url">${err.url}</td>
                             <td><span style="color: #ef4444; font-weight: 600;">${err.type}</span></td>
@@ -124,7 +124,7 @@ export async function sendHealthCheckEmail({
                         `).join('')}
                     </tbody>
                 </table>
-                ${errors.length > 10 ? `<p style="font-size: 12px; color: #64748b; margin-top: 8px;">...and ${errors.length - 10} more errors.</p>` : ''}
+                ${errorLogs.length > 10 ? `<p style="font-size: 12px; color: #64748b; margin-top: 8px;">...and ${errorLogs.length - 10} more errors.</p>` : ''}
                 
                 <div style="margin-top: 32px; padding: 20px; background: #fecece1a; border-radius: 8px; border: 1px solid #fecaca;">
                     <h4 style="margin: 0 0 8px 0; color: #991b1b;">Recommended Action</h4>
@@ -136,7 +136,8 @@ export async function sendHealthCheckEmail({
             </div>
             <div class="footer">
                 <p>&copy; ${new Date().getFullYear()} ${APP_NAME}. All rights reserved.</p>
-                <p>This is an automated notification, please do not reply to this email.</p>
+                <p>This automated report was sent via <b>${provider.toUpperCase()}</b>.</p>
+                <p>Please do not reply to this email.</p>
             </div>
         </div>
     </body>
@@ -152,12 +153,12 @@ export async function sendHealthCheckEmail({
             const websiteLink = process.env.NEXTAUTH_URL || "http://localhost:3000";
 
             // Format error rows for EmailJS template
-            const errorRowsHtml = errors.slice(0, 10).map(err => `
+            const errorRowsHtml = errorLogs.slice(0, 10).map(err => `
                 <tr>
                     <td style="padding: 8px; border: 1px solid #e5e7eb;">${err.url}</td>
                     <td style="padding: 8px; border: 1px solid #e5e7eb; color: #b91c1c;">${err.type}</td>
                     <td style="padding: 8px; border: 1px solid #e5e7eb;">${err.code || '-'}</td>
-                    <td style="padding: 8px; border: 1px solid #e5e7eb;">${err.message || 'Issue detected during health check.'}</td>
+                    <td style="padding: 8px; border: 1px solid #e5e7eb;">${err.description || 'Issue detected during health check.'}</td>
                 </tr>
             `).join('');
 
@@ -168,9 +169,10 @@ export async function sendHealthCheckEmail({
                 sitemap_url: sitemapUrl,
                 checked_time: checkDate,
                 total_urls: summary.totalUrls || 0,
-                total_errors: errors.length,
+                total_errors: errorLogs.length,
                 error_rows: errorRowsHtml || "<tr><td colspan='4' style='padding:8px; text-align:center;'>No critical errors found.</td></tr>",
-                support_email: supportEmail
+                support_email: supportEmail,
+                active_provider: "EmailJS"
             };
 
             const payload = {

@@ -31,7 +31,7 @@ const HealthCheckLogSchema = new mongoose.Schema({
         xmlValid: Boolean,
         accessible: Boolean,
     },
-    errors: [
+    errorLogs: [
         {
             url: String,
             type: String, // 404, 500, Timeout, etc.
