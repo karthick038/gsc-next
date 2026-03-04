@@ -137,6 +137,33 @@ export async function GET(request) {
                     };
                 });
 
+                // --- Trigger background health check for PENDING sitemaps ---
+                const protocol = request.headers.get("x-forwarded-proto") || "http";
+                const host = request.headers.get("host");
+                const baseUrl = `${protocol}://${host}`;
+
+                enriched.forEach(sm => {
+                    // Only auto-trigger if it has NEVER been checked (no local record or no lastCheckedAt)
+                    const localSm = localSitemaps.find(ls => ls.feedpath === sm.path);
+                    if (!localSm || !localSm.lastCheckedAt) {
+                        console.log(`[LIST] Auto-triggering FIRST health check for: ${sm.path}`);
+
+                        // We need an ID to trigger the task. If local record doesn't exist, we might need a different approach or just wait for first submit.
+                        // But usually sitemaps are discovered from GSC and might not be in our DB yet.
+                        // Let's ensure they exist in DB first or ignore if they aren't "ours" yet.
+                        if (localSm) {
+                            fetch(`${baseUrl}/api/sitemap/health-check/task`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    sitemapId: localSm._id,
+                                    userId: session.user.id
+                                }),
+                            }).catch(err => console.error("Auto-trigger failed:", err));
+                        }
+                    }
+                });
+
                 return NextResponse.json({ sitemaps: enriched });
 
             } catch (err) {

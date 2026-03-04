@@ -143,7 +143,8 @@ export async function POST(request) {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         sitemapId: sitemapRecord._id,
-                        userId: session.user.id
+                        userId: session.user.id,
+                        force: true // NEW: Force re-check on submission
                     }),
                 }).catch(err => console.error("Background task trigger failed:", err));
 

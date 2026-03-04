@@ -175,13 +175,7 @@ export async function sendHealthCheckEmail({
                 active_provider: "EmailJS"
             };
 
-            const payload = {
-                service_id: settings.emailjsServiceId,
-                template_id: settings.emailjsTemplateId || "template_ds18osi",
-                user_id: settings.emailjsPublicKey,
-                accessToken: settings.emailjsPrivateKey,
-                template_params: templateParams
-            };
+            console.log("EmailJS Payload:", JSON.stringify({ ...payload, accessToken: "HIDDEN" }, null, 2));
 
             const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
                 method: "POST",
@@ -191,6 +185,7 @@ export async function sendHealthCheckEmail({
 
             if (!response.ok) {
                 const errorText = await response.text();
+                console.error(`EmailJS Send Failed: ${response.status} - ${errorText}`);
                 throw new Error(`EmailJS Error: ${response.status} - ${errorText}`);
             }
 
@@ -218,7 +213,7 @@ export async function sendHealthCheckEmail({
         console.log(`Success email sent to ${to} via Brevo API`);
         return { success: true };
     } catch (err) {
-        console.error("Failed to send email:", err.message);
+        console.error("sendHealthCheckEmail - CRITICAL ERROR:", err.message);
         return { success: false, error: err.message };
     }
 }
