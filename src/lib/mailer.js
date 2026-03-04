@@ -33,6 +33,9 @@ export async function sendHealthCheckEmail({
     const accentColor = isSuccess ? "#22c55e" : "#ef4444";
     const checkDate = new Date().toLocaleString();
 
+    const settings = await getEmailSettings();
+    const provider = settings?.emailProvider || "brevo";
+
     const html = `
     <!DOCTYPE html>
     <html>
@@ -111,7 +114,7 @@ export async function sendHealthCheckEmail({
                         <tr>
                             <th>URL</th>
                             <th>Error</th>
-                            <th>Code</th>
+                            <th>Details</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -119,7 +122,7 @@ export async function sendHealthCheckEmail({
                         <tr>
                             <td class="error-url">${err.url}</td>
                             <td><span style="color: #ef4444; font-weight: 600;">${err.type}</span></td>
-                            <td>${err.code || '-'}</td>
+                            <td>${err.description || err.code || '-'}</td>
                         </tr>
                         `).join('')}
                     </tbody>
@@ -145,9 +148,6 @@ export async function sendHealthCheckEmail({
     `;
 
     try {
-        const settings = await getEmailSettings();
-        const provider = settings?.emailProvider || "brevo";
-
         if (provider === "emailjs") {
             const supportEmail = settings?.senderEmail || "support@colorwhistle.com";
             const websiteLink = process.env.NEXTAUTH_URL || "http://localhost:3000";
