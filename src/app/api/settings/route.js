@@ -30,12 +30,12 @@ export async function PATCH(request) {
 
     try {
         const body = await request.json();
-        const { siteTitle, logoUrl, faviconUrl, logoWidth, logoHeight, brevoApiKey } = body;
+        const { siteTitle, logoUrl, faviconUrl, logoWidth, logoHeight, brevoApiKey, senderEmail } = body;
 
         await connectDB();
         const updatedSettings = await Settings.findOneAndUpdate(
             {},
-            { siteTitle, logoUrl, faviconUrl, logoWidth, logoHeight, brevoApiKey },
+            { siteTitle, logoUrl, faviconUrl, logoWidth, logoHeight, brevoApiKey, senderEmail },
             { upsert: true, new: true }
         );
 

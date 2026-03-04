@@ -10,13 +10,14 @@ export async function POST(request) {
 
     try {
         const body = await request.json();
-        const { brevoApiKey } = body;
+        const { brevoApiKey, senderEmail } = body;
 
         if (!brevoApiKey) {
             return NextResponse.json({ error: "Brevo API Key is required for testing" }, { status: 400 });
         }
 
         const client = new BrevoClient({ apiKey: brevoApiKey });
+        const fromEmail = senderEmail || session.user.email;
 
         await client.transactionalEmails.sendTransacEmail({
             subject: "Brevo API Connection Test - Success",
@@ -26,12 +27,13 @@ export async function POST(request) {
                     <p>This is a test email sent from your dashboard to verify your Brevo API configuration.</p>
                     <div style="background: #f8fafc; padding: 12px; border-radius: 4px; font-size: 13px; margin: 20px 0;">
                         <strong>Tested Method:</strong> Brevo Transactional API (v4 SDK)<br/>
+                        <strong>Sender:</strong> ${fromEmail}<br/>
                         <strong>Status:</strong> Active & Verified
                     </div>
-                    <p style="color: #64748b; font-size: 12px;">You can now safely save this API key in the admin dashboard.</p>
+                    <p style="color: #64748b; font-size: 12px;">You can now safely save this configuration in the admin dashboard.</p>
                 </div>
             `,
-            sender: { name: "Brevo API Test", email: session.user.email },
+            sender: { name: "Brevo API Test", email: fromEmail },
             to: [{ email: session.user.email }]
         });
 

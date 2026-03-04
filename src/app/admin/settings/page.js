@@ -22,6 +22,7 @@ export default function AdminSettingsPage() {
         logoWidth: "",
         logoHeight: "",
         brevoApiKey: "",
+        senderEmail: "",
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -40,6 +41,7 @@ export default function AdminSettingsPage() {
                         ...data,
                         logoWidth: data.logoWidth || "",
                         logoHeight: data.logoHeight || "",
+                        senderEmail: data.senderEmail || "",
                     });
                 }
             } catch (error) {
@@ -154,6 +156,7 @@ export default function AdminSettingsPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     brevoApiKey: settings.brevoApiKey,
+                    senderEmail: settings.senderEmail,
                 }),
             });
 
@@ -281,7 +284,7 @@ export default function AdminSettingsPage() {
                         </Card>
 
                         {/* Dashboard Logo */}
-                        <Card className="border-zinc-200 shadow-sm">
+                        < Card className="border-zinc-200 shadow-sm" >
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2 text-lg">
                                     <ImageIcon className="h-5 w-5 text-purple-500" />
@@ -382,6 +385,20 @@ export default function AdminSettingsPage() {
                                         className="h-10 border-zinc-200"
                                     />
                                     <p className="text-[10px] text-zinc-400 italic">Enter your v3 API key from the Brevo SMTP & API settings page.</p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                        <User className="h-3 w-3" /> Sender Email
+                                    </label>
+                                    <Input
+                                        type="email"
+                                        value={settings.senderEmail}
+                                        onChange={(e) => setSettings({ ...settings, senderEmail: e.target.value })}
+                                        placeholder="verified@example.com"
+                                        className="h-10 border-zinc-200"
+                                    />
+                                    <p className="text-[10px] text-zinc-400 italic">This email must be a <strong>Verified Sender</strong> in your Brevo dashboard.</p>
                                 </div>
 
                                 <div className="pt-4 border-t border-zinc-100 flex gap-3">
