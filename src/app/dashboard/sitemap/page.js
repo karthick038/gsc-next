@@ -1067,12 +1067,6 @@ export default function SitemapPage() {
                             text: `The sitemap ${currentSm.path} contains errors.`,
                             debug: currentSm.emailResponse
                         });
-                    } else if (currentSm.healthStatus === "ACTIVE") {
-                        setNotification({
-                            type: "success",
-                            text: `Sitemap ${currentSm.path} processed successfully.`,
-                            debug: currentSm.emailResponse
-                        });
                     }
                 }
             });
