@@ -72,6 +72,8 @@ export async function sendHealthCheckEmail({
             accessToken: privateKey,
             template_params: {
                 to_email: to,
+                from_name: settings?.siteTitle || APP_NAME,
+                reply_to: supportEmail,
                 website_link: websiteLink,
                 company_name: settings?.siteTitle || APP_NAME,
                 sitemap_url: sitemapUrl,
