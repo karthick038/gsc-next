@@ -23,8 +23,6 @@ export default function AdminSettingsPage() {
         faviconUrl: "",
         logoWidth: "",
         logoHeight: "",
-        emailProvider: "brevo",
-        brevoApiKey: "",
         senderEmail: "",
         emailjsServiceId: "",
         emailjsTemplateId: "",
@@ -33,7 +31,7 @@ export default function AdminSettingsPage() {
         emailjsPublicKey: "",
         emailjsPrivateKey: "",
     });
-    const [activeSavedProvider, setActiveSavedProvider] = useState("brevo");
+    const [activeTab, setActiveTab] = useState("general");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [testing, setTesting] = useState(false);
@@ -51,7 +49,7 @@ export default function AdminSettingsPage() {
                         ...data,
                         logoWidth: data.logoWidth || "",
                         logoHeight: data.logoHeight || "",
-                        emailProvider: data.emailProvider || "brevo",
+
                         senderEmail: data.senderEmail || "",
                         emailjsServiceId: data.emailjsServiceId || "",
                         emailjsTemplateId: data.emailjsTemplateId || "",
@@ -60,7 +58,7 @@ export default function AdminSettingsPage() {
                         emailjsPublicKey: data.emailjsPublicKey || "",
                         emailjsPrivateKey: data.emailjsPrivateKey || "",
                     });
-                    setActiveSavedProvider(data.emailProvider || "brevo");
+
                 }
             } catch (error) {
                 console.error("Failed to fetch settings", error);
@@ -125,38 +123,66 @@ export default function AdminSettingsPage() {
         reader.readAsDataURL(file);
     };
 
-    const handleSave = async () => {
+    const handleSaveBranding = async () => {
         setSaving(true);
         setMessage({ type: "", text: "" });
 
-        // Production-grade validation & cleaning
         const siteTitle = settings.siteTitle?.trim() || "GSC Dashboard";
-
-        // Ensure dimensions are positive integers if provided
         const logoWidth = settings.logoWidth ? Math.max(1, parseInt(settings.logoWidth)) : "";
         const logoHeight = settings.logoHeight ? Math.max(1, parseInt(settings.logoHeight)) : "";
-
-        const payload = {
-            ...settings,
-            siteTitle,
-            logoWidth,
-            logoHeight
-        };
 
         try {
             const res = await fetch("/api/settings", {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
+                body: JSON.stringify({
+                    siteTitle,
+                    logoUrl: settings.logoUrl,
+                    faviconUrl: settings.faviconUrl,
+                    logoWidth,
+                    logoHeight,
+                }),
             });
             if (res.ok) {
                 router.refresh();
-                setMessage({ type: "success", text: "Settings saved successfully!" });
+                setMessage({ type: "success", text: "Branding settings saved successfully!" });
                 setSettings(prev => ({ ...prev, siteTitle, logoWidth, logoHeight }));
-                setActiveSavedProvider(payload.emailProvider);
             } else {
                 const data = await res.json();
-                setMessage({ type: "error", text: data.error || "Failed to save settings" });
+                setMessage({ type: "error", text: data.error || "Failed to save branding" });
+            }
+        } catch (error) {
+            setMessage({ type: "error", text: "Something went wrong" });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSaveEmail = async () => {
+        setSaving(true);
+        setMessage({ type: "", text: "" });
+
+        try {
+            const res = await fetch("/api/settings", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    senderEmail: settings.senderEmail,
+                    emailjsServiceId: settings.emailjsServiceId,
+                    emailjsTemplateId: settings.emailjsTemplateId,
+                    emailjsTemplateIdSuccess: settings.emailjsTemplateIdSuccess,
+                    emailjsTemplateIdFailed: settings.emailjsTemplateIdFailed,
+                    emailjsPublicKey: settings.emailjsPublicKey,
+                    emailjsPrivateKey: settings.emailjsPrivateKey,
+                }),
+
+            });
+            if (res.ok) {
+                setMessage({ type: "success", text: "Email configuration saved successfully!" });
+
+            } else {
+                const data = await res.json();
+                setMessage({ type: "error", text: data.error || "Failed to save email config" });
             }
         } catch (error) {
             setMessage({ type: "error", text: "Something went wrong" });
@@ -174,8 +200,6 @@ export default function AdminSettingsPage() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    emailProvider: settings.emailProvider,
-                    brevoApiKey: settings.brevoApiKey,
                     senderEmail: settings.senderEmail,
                     emailjsServiceId: settings.emailjsServiceId,
                     emailjsTemplateId: settings.emailjsTemplateId,
@@ -184,6 +208,7 @@ export default function AdminSettingsPage() {
                     emailjsPublicKey: settings.emailjsPublicKey,
                     emailjsPrivateKey: settings.emailjsPrivateKey,
                 }),
+
             });
 
             const data = await res.json();
@@ -212,15 +237,15 @@ export default function AdminSettingsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Admin Settings</h1>
-                    <p className="text-sm text-zinc-500 mt-1">Manage global branding, branding, and email notifications.</p>
+                    <p className="text-sm text-zinc-500 mt-1">Manage global branding and email notifications.</p>
                 </div>
                 <Button
-                    onClick={handleSave}
+                    onClick={activeTab === "general" ? handleSaveBranding : handleSaveEmail}
                     disabled={saving}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md shadow-emerald-100 transition-all active:scale-95"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md shadow-emerald-100 transition-all active:scale-95 px-8"
                 >
                     {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                    Save Settings
+                    {activeTab === "general" ? "Save Branding" : "Save Email Config"}
                 </Button>
             </div>
 
@@ -232,7 +257,7 @@ export default function AdminSettingsPage() {
                 </Alert>
             )}
 
-            <Tabs defaultValue="general" className="space-y-6">
+            <Tabs defaultValue="general" onValueChange={setActiveTab} className="space-y-6">
                 <TabsList className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 h-11 p-1 shadow-sm">
                     <TabsTrigger value="general" className="px-6 data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 font-bold">
                         <Globe className="h-4 w-4 mr-2" />
@@ -389,194 +414,111 @@ export default function AdminSettingsPage() {
                 </TabsContent>
 
                 <TabsContent value="email">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <Card className="lg:col-span-2 border-zinc-200 shadow-sm overflow-hidden">
-                            <CardHeader className="bg-zinc-50/50 border-bottom border-zinc-100">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <CardTitle className="text-lg flex items-center gap-2">
-                                            <Mail className="h-5 w-5 text-emerald-600" />
-                                            Email Provider Settings
-                                        </CardTitle>
-                                        <CardDescription>Select and configure your preferred email provider.</CardDescription>
-                                    </div>
-                                    <div className="flex items-center bg-zinc-100 p-1 rounded-lg border border-zinc-200">
-                                        <button
-                                            onClick={() => setSettings({ ...settings, emailProvider: "brevo" })}
-                                            className={cn(
-                                                "px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-2",
-                                                settings.emailProvider === "brevo" ? "bg-white text-emerald-600 shadow-sm" : "text-zinc-500 hover:text-zinc-800"
-                                            )}
-                                        >
-                                            Brevo
-                                            {activeSavedProvider === "brevo" && (
-                                                <Badge className="h-4 px-1 text-[8px] bg-emerald-100 text-emerald-700 border-emerald-200">ACTIVE</Badge>
-                                            )}
-                                        </button>
-                                        <button
-                                            onClick={() => setSettings({ ...settings, emailProvider: "emailjs" })}
-                                            className={cn(
-                                                "px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-2",
-                                                settings.emailProvider === "emailjs" ? "bg-white text-blue-600 shadow-sm" : "text-zinc-500 hover:text-zinc-800"
-                                            )}
-                                        >
-                                            EmailJS
-                                            {activeSavedProvider === "emailjs" && (
-                                                <Badge className="h-4 px-1 text-[8px] bg-blue-100 text-blue-700 border-blue-200">ACTIVE</Badge>
-                                            )}
-                                        </button>
-                                    </div>
+                    <Card className="border-zinc-200 shadow-sm overflow-hidden">
+                        <CardHeader className="bg-zinc-50/50 border-bottom border-zinc-100">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                                <Mail className="h-5 w-5 text-blue-600" />
+                                EmailJS Configuration
+                            </CardTitle>
+                            <CardDescription>Configure your EmailJS credentials for sitemap health check email reports.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                        <Zap className="h-3 w-3" /> Service ID
+                                    </label>
+                                    <Input
+                                        value={settings.emailjsServiceId}
+                                        onChange={(e) => setSettings({ ...settings, emailjsServiceId: e.target.value })}
+                                        placeholder="service_..."
+                                        className="h-10 border-zinc-200"
+                                    />
                                 </div>
-                            </CardHeader>
-                            <CardContent className="p-6 space-y-6">
-                                {settings.emailProvider === "brevo" ? (
-                                    <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-300">
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
-                                                <Key className="h-3 w-3" /> Brevo API Key
-                                            </label>
-                                            <Input
-                                                type="password"
-                                                value={settings.brevoApiKey}
-                                                onChange={(e) => setSettings({ ...settings, brevoApiKey: e.target.value })}
-                                                placeholder="xkeysib-..."
-                                                className="h-10 border-zinc-200"
-                                            />
-                                            <p className="text-[10px] text-zinc-400 italic">Enter your v3 API key from the Brevo SMTP & API settings page.</p>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
-                                                <User className="h-3 w-3" /> Sender Email
-                                            </label>
-                                            <Input
-                                                type="email"
-                                                value={settings.senderEmail}
-                                                onChange={(e) => setSettings({ ...settings, senderEmail: e.target.value })}
-                                                placeholder="verified@example.com"
-                                                className="h-10 border-zinc-200"
-                                            />
-                                            <p className="text-[10px] text-zinc-400 italic">This email must be a <strong>Verified Sender</strong> in your Brevo dashboard.</p>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-1 duration-300">
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
-                                                <Zap className="h-3 w-3" /> Service ID
-                                            </label>
-                                            <Input
-                                                value={settings.emailjsServiceId}
-                                                onChange={(e) => setSettings({ ...settings, emailjsServiceId: e.target.value })}
-                                                placeholder="service_..."
-                                                className="h-10 border-zinc-200"
-                                            />
-                                        </div>
-                                        {/* ── Template: Passed ── */}
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
-                                                <FileText className="h-3 w-3 text-green-500" /> Passed Template ID
-                                            </label>
-                                            <Input
-                                                value={settings.emailjsTemplateIdSuccess || ""}
-                                                onChange={(e) => setSettings({ ...settings, emailjsTemplateIdSuccess: e.target.value })}
-                                                placeholder="template_3esex02 (sent when no errors)"
-                                                className="h-10 border-zinc-200"
-                                            />
-                                            <p className="text-[10px] text-green-600 font-medium">Sent when sitemap has <strong>no errors</strong></p>
-                                        </div>
-                                        {/* ── Template: Failed ── */}
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
-                                                <FileText className="h-3 w-3 text-red-500" /> Failed Template ID
-                                            </label>
-                                            <Input
-                                                value={settings.emailjsTemplateIdFailed || ""}
-                                                onChange={(e) => setSettings({ ...settings, emailjsTemplateIdFailed: e.target.value })}
-                                                placeholder="template_ds18osi (sent when errors found)"
-                                                className="h-10 border-zinc-200"
-                                            />
-                                            <p className="text-[10px] text-red-500 font-medium">Sent when sitemap has <strong>errors</strong></p>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
-                                                <ShieldCheck className="h-3 w-3" /> Public Key
-                                            </label>
-                                            <Input
-                                                value={settings.emailjsPublicKey}
-                                                onChange={(e) => setSettings({ ...settings, emailjsPublicKey: e.target.value })}
-                                                placeholder="user_..."
-                                                className="h-10 border-zinc-200"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
-                                                <Key className="h-3 w-3" /> Private Key (Optional)
-                                            </label>
-                                            <Input
-                                                type="password"
-                                                value={settings.emailjsPrivateKey}
-                                                onChange={(e) => setSettings({ ...settings, emailjsPrivateKey: e.target.value })}
-                                                placeholder="Access Token"
-                                                className="h-10 border-zinc-200"
-                                            />
-                                        </div>
-                                        <div className="md:col-span-2 p-3 bg-blue-50/50 rounded-lg border border-blue-100">
-                                            <p className="text-[11px] text-blue-700 leading-relaxed">
-                                                <strong>EmailJS Template variables supported:</strong> <br />
-                                                <code>&#123;&#123;website_link&#125;&#125;</code>, <code>&#123;&#123;company_name&#125;&#125;</code>, <code>&#123;&#123;sitemap_url&#125;&#125;</code>,
-                                                <code>&#123;&#123;checked_time&#125;&#125;</code>, <code>&#123;&#123;total_urls&#125;&#125;</code>, <code>&#123;&#123;total_errors&#125;&#125;</code>,
-                                                <code>&#123;&#123;error_rows&#125;&#125;</code>, <code>&#123;&#123;support_email&#125;&#125;</code>
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="pt-6 border-t border-zinc-100 flex gap-3">
-                                    <Button
-                                        onClick={handleTestConnection}
-                                        disabled={testing}
-                                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 shadow-sm transition-all active:scale-95"
-                                    >
-                                        {testing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Server className="h-4 w-4 mr-2" />}
-                                        Test {settings.emailProvider === "brevo" ? "Brevo" : "EmailJS"} Connection
-                                    </Button>
-                                    <Button
-                                        onClick={handleSave}
-                                        disabled={saving}
-                                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11 shadow-sm transition-all active:scale-95"
-                                    >
-                                        {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                                        Save All Settings
-                                    </Button>
+                                {/* ── Template: Passed ── */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                        <FileText className="h-3 w-3 text-green-500" /> Passed Template ID
+                                    </label>
+                                    <Input
+                                        value={settings.emailjsTemplateIdSuccess || ""}
+                                        onChange={(e) => setSettings({ ...settings, emailjsTemplateIdSuccess: e.target.value })}
+                                        placeholder="template_3esex02 (sent when no errors)"
+                                        className="h-10 border-zinc-200"
+                                    />
+                                    <p className="text-[10px] text-green-600 font-medium">Sent when sitemap has <strong>no errors</strong></p>
                                 </div>
-                            </CardContent>
-                        </Card>
+                                {/* ── Template: Failed ── */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                        <FileText className="h-3 w-3 text-red-500" /> Failed Template ID
+                                    </label>
+                                    <Input
+                                        value={settings.emailjsTemplateIdFailed || ""}
+                                        onChange={(e) => setSettings({ ...settings, emailjsTemplateIdFailed: e.target.value })}
+                                        placeholder="template_ds18osi (sent when errors found)"
+                                        className="h-10 border-zinc-200"
+                                    />
+                                    <p className="text-[10px] text-red-500 font-medium">Sent when sitemap has <strong>errors</strong></p>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                        <ShieldCheck className="h-3 w-3" /> Public Key
+                                    </label>
+                                    <Input
+                                        value={settings.emailjsPublicKey}
+                                        onChange={(e) => setSettings({ ...settings, emailjsPublicKey: e.target.value })}
+                                        placeholder="user_..."
+                                        className="h-10 border-zinc-200"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                        <Key className="h-3 w-3" /> Private Key (Optional)
+                                    </label>
+                                    <Input
+                                        type="password"
+                                        value={settings.emailjsPrivateKey}
+                                        onChange={(e) => setSettings({ ...settings, emailjsPrivateKey: e.target.value })}
+                                        placeholder="Access Token"
+                                        className="h-10 border-zinc-200"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                        <User className="h-3 w-3" /> Sender Email
+                                    </label>
+                                    <Input
+                                        type="email"
+                                        value={settings.senderEmail}
+                                        onChange={(e) => setSettings({ ...settings, senderEmail: e.target.value })}
+                                        placeholder="support@example.com"
+                                        className="h-10 border-zinc-200"
+                                    />
+                                    <p className="text-[10px] text-zinc-400 italic">Used as the support/reply email in templates.</p>
+                                </div>
+                                <div className="md:col-span-2 p-3 bg-blue-50/50 rounded-lg border border-blue-100">
+                                    <p className="text-[11px] text-blue-700 leading-relaxed">
+                                        <strong>EmailJS Template variables supported:</strong> <br />
+                                        <code>&#123;&#123;to_email&#125;&#125;</code>, <code>&#123;&#123;website_link&#125;&#125;</code>, <code>&#123;&#123;company_name&#125;&#125;</code>, <code>&#123;&#123;sitemap_url&#125;&#125;</code>,
+                                        <code>&#123;&#123;checked_time&#125;&#125;</code>, <code>&#123;&#123;total_urls&#125;&#125;</code>, <code>&#123;&#123;total_errors&#125;&#125;</code>,
+                                        <code>&#123;&#123;error_rows&#125;&#125;</code>, <code>&#123;&#123;support_email&#125;&#125;</code>
+                                    </p>
+                                </div>
+                            </div>
 
-                        <Card className="border-zinc-200 bg-zinc-50/30 shadow-sm border-dashed">
-                            <CardHeader>
-                                <CardTitle className="text-base text-zinc-800 flex items-center gap-2">
-                                    <Mail className="h-4 w-4" /> Provider Guide
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4 text-xs text-zinc-600">
-                                <section className="space-y-2">
-                                    <h4 className="font-bold text-emerald-700 uppercase tracking-tighter">Why Brevo?</h4>
-                                    <p>Direct API integration, higher reliability for system-critical alerts, and built-in email templating. Better for high-volume notification sending.</p>
-                                </section>
-                                <section className="space-y-2">
-                                    <h4 className="font-bold text-blue-700 uppercase tracking-tighter">Why EmailJS?</h4>
-                                    <p>Easier template management in their dashboard. Ideal if you already use EmailJS across multiple projects and want to centralize templates.</p>
-                                </section>
-                                <Alert className="bg-white border-zinc-200 mt-2">
-                                    <AlertCircle className="h-3 w-3" />
-                                    <AlertDescription className="text-[10px] text-zinc-500 leading-tight">
-                                        Changing provider switches the entire notification system to use the selected service for all health checks.
-                                    </AlertDescription>
-                                </Alert>
-                            </CardContent>
-                        </Card>
-                    </div>
+                            <div className="pt-6 border-t border-zinc-100 flex gap-3">
+                                <Button
+                                    onClick={handleTestConnection}
+                                    disabled={testing}
+                                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 shadow-sm transition-all active:scale-95"
+                                >
+                                    {testing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Server className="h-4 w-4 mr-2" />}
+                                    Test EmailJS Connection
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </TabsContent>
             </Tabs>
 
@@ -588,6 +530,6 @@ export default function AdminSettingsPage() {
                     setSettings(prev => ({ ...prev, faviconUrl: croppedImage }));
                 }}
             />
-        </div>
+        </div >
     );
 }

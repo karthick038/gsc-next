@@ -5,11 +5,16 @@ import { cn } from "@/lib/utils";
 
 const TabsContext = createContext(null);
 
-export function Tabs({ defaultValue, children, className }) {
+export function Tabs({ defaultValue, onValueChange, children, className }) {
     const [activeTab, setActiveTab] = useState(defaultValue);
 
+    const handleTabChange = (value) => {
+        setActiveTab(value);
+        if (onValueChange) onValueChange(value);
+    };
+
     return (
-        <TabsContext.Provider value={{ activeTab, setActiveTab }}>
+        <TabsContext.Provider value={{ activeTab, setActiveTab: handleTabChange }}>
             <div className={cn("w-full", className)}>{children}</div>
         </TabsContext.Provider>
     );

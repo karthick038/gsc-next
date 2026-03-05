@@ -366,11 +366,16 @@ export default function UploadJSON() {
             return;
         }
 
-        // 0.5. Email Validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (serviceAccountEmail && !emailRegex.test(serviceAccountEmail)) {
-            setMessage("Please enter a valid email address for notifications.");
-            return;
+        // 0.5. Email Validation (Multi-recipient support)
+        if (serviceAccountEmail) {
+            const emails = serviceAccountEmail.split(",").map(e => e.trim()).filter(e => e);
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const invalidEmail = emails.find(e => !emailRegex.test(e));
+
+            if (invalidEmail) {
+                setMessage(`Invalid email address: "${invalidEmail}". Please provide valid emails separated by commas.`);
+                return;
+            }
         }
 
         setIsSavingAndChecking(true);
@@ -497,10 +502,10 @@ export default function UploadJSON() {
                             <Input
                                 value={serviceAccountEmail}
                                 onChange={(e) => setServiceAccountEmail(e.target.value)}
-                                placeholder="user@example.com"
+                                placeholder="user1@example.com, user2@example.com"
                                 className="h-11 border-zinc-200 focus:ring-blue-500 bg-zinc-50/50"
                             />
-                            <p className="text-[11px] text-zinc-400 italic">By default, your account email is used. You can change it if needed.</p>
+                            <p className="text-[11px] text-zinc-400 italic">Separate multiple emails with commas. By default, your account email is used.</p>
                         </div>
 
                         <div className="space-y-2">
@@ -673,13 +678,30 @@ export default function UploadJSON() {
                                         </div>
 
                                         {site.accountEmail && (
-                                            <div className="space-y-1.5 border-t border-zinc-50 pt-3 pb-2">
-                                                <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-widest pl-0.5">Service Account</p>
-                                                <div className="flex items-center gap-2 text-zinc-500 hover:text-zinc-700 transition-colors">
-                                                    <Mail className="h-3 w-3 text-zinc-400" />
-                                                    <span className="text-[11px] font-medium truncate" title={site.accountEmail}>
-                                                        {site.accountEmail}
+                                            <div className="space-y-2 border-t border-zinc-50 pt-3 pb-1">
+                                                <div className="flex items-center justify-between pl-0.5">
+                                                    <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-widest">User Emails</p>
+                                                    <span className="text-[9px] font-bold text-zinc-300 bg-zinc-50 px-1.5 py-0.5 rounded border border-zinc-100">
+                                                        {site.accountEmail.split(",").filter(e => e.trim()).length} Recipients
                                                     </span>
+                                                </div>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {site.accountEmail.split(",").map((email, idx) => {
+                                                        const trimmedEmail = email.trim();
+                                                        if (!trimmedEmail) return null;
+                                                        return (
+                                                            <div
+                                                                key={idx}
+                                                                className="group flex items-center gap-1.5 bg-blue-50/40 hover:bg-blue-50 border border-blue-100/60 px-2 py-0.5 rounded-md transition-all duration-200 cursor-default"
+                                                                title={trimmedEmail}
+                                                            >
+                                                                <div className="h-1.5 w-1.5 rounded-full bg-blue-400 group-hover:scale-110 transition-transform" />
+                                                                <span className="text-[10px] font-semibold text-blue-700/80 group-hover:text-blue-900 truncate max-w-[100%]">
+                                                                    {trimmedEmail}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
                                         )}

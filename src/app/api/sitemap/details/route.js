@@ -146,28 +146,39 @@ export async function GET(request) {
                 const warnings = parseInt(data.warnings) || 0;
                 const contents = data.contents || [];
 
-                // Build descriptive warning items
+                // Build descriptive warning items — try to infer the SPECIFIC warning
                 const warningDetails = [];
                 if (warnings > 0) {
-                    // Common GSC sitemap warning categories
-                    warningDetails.push({
-                        type: "Non-Canonical URLs",
-                        count: null,
-                        description: `Google found URLs in this sitemap that redirect to a canonical version. Redirected URLs are not indexed directly.`,
-                        fix: "Update <loc> entries to point directly to canonical URLs (e.g. use https:// instead of http://, include/exclude www consistently).",
-                    });
-                    warningDetails.push({
-                        type: "Soft 404 / Content Mismatch",
-                        count: null,
-                        description: "Some URLs may return HTTP 200 but serve empty, thin, or error-like content that Google treats as a soft 404.",
-                        fix: "Ensure all sitemap URLs return meaningful page content. Remove placeholder or empty pages from the sitemap.",
-                    });
-                    warningDetails.push({
-                        type: "Blocked by robots.txt",
-                        count: null,
-                        description: "One or more URLs in this sitemap may be blocked by your robots.txt file.",
-                        fix: "Check your robots.txt at the root of your domain and ensure sitemap URLs are not disallowed. Use Google's robots.txt tester in GSC.",
-                    });
+                    const webContent = contents.find((c) => c.type === "web");
+                    const submitted = parseInt(webContent?.submitted || 0);
+                    const indexed = parseInt(webContent?.indexed || 0);
+                    const gap = submitted - indexed;
+
+                    // Infer the most likely cause based on content analysis
+                    if (gap > 0 && submitted > 0) {
+                        // Most common GSC warning: URLs in sitemap aren't getting indexed
+                        warningDetails.push({
+                            type: "Non-Indexed URLs Detected",
+                            count: gap,
+                            description: `${gap} of ${submitted} URL(s) submitted in this sitemap are not indexed by Google. This typically means some URLs redirect to canonical versions, return soft 404s, or are blocked by robots.txt.`,
+                            fix: "Check these URLs in Google Search Console → URL Inspection tool. Ensure each URL in the sitemap is the final canonical version (no redirects), returns proper content (no thin/empty pages), and is not blocked by robots.txt.",
+                        });
+                    } else if (submitted === 0 && indexed === 0) {
+                        warningDetails.push({
+                            type: "Sitemap Not Yet Processed",
+                            count: null,
+                            description: `Google has not yet processed the URLs in this sitemap. This may indicate the sitemap was recently submitted or Google encountered an issue during crawling.`,
+                            fix: "Wait for Google to process the sitemap. If this persists, check the sitemap URL is publicly accessible and valid XML.",
+                        });
+                    } else {
+                        // Fallback — we know there's a warning but can't pinpoint it
+                        warningDetails.push({
+                            type: `${warnings} Warning${warnings !== 1 ? "s" : ""} Reported by Google`,
+                            count: warnings,
+                            description: `Google Search Console flagged ${warnings} warning${warnings !== 1 ? "s" : ""} for this sitemap. The exact cause is not available through the API — common reasons include non-canonical URLs, soft 404s, or robots.txt blocks.`,
+                            fix: "Open Google Search Console directly to see the specific warning. Click 'View in Search Console' above for the exact details.",
+                        });
+                    }
                 }
 
                 // Build descriptive error items
