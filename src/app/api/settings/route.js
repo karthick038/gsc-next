@@ -32,7 +32,7 @@ export async function PATCH(request) {
         const body = await request.json();
         const {
             siteTitle, logoUrl, faviconUrl, logoWidth, logoHeight,
-            emailProvider, brevoApiKey, senderEmail,
+            senderEmail,
             emailjsServiceId, emailjsTemplateId, emailjsTemplateIdSuccess, emailjsTemplateIdFailed,
             emailjsPublicKey, emailjsPrivateKey
         } = body;
@@ -42,7 +42,7 @@ export async function PATCH(request) {
             {},
             {
                 siteTitle, logoUrl, faviconUrl, logoWidth, logoHeight,
-                emailProvider, brevoApiKey, senderEmail,
+                senderEmail,
                 emailjsServiceId, emailjsTemplateId, emailjsTemplateIdSuccess, emailjsTemplateIdFailed,
                 emailjsPublicKey, emailjsPrivateKey
             },

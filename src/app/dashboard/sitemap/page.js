@@ -406,6 +406,29 @@ function ErrorDetailPanel({ siteUrl, feedpath, localHealthStatus }) {
                     </div>
                 )}
 
+                {/* ── Warnings ── */}
+                {details.warningDetails && details.warningDetails.length > 0 && (
+                    <div className="space-y-2">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-amber-500">Possible Warning Causes</p>
+                        <p className="text-[10px] text-zinc-400 -mt-1">
+                            Google found {details.warnings} warning{details.warnings !== 1 ? "s" : ""} for this sitemap. Below are the most common causes.
+                        </p>
+                        {details.warningDetails.map((warn, i) => (
+                            <div key={i} className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20 p-3 text-xs space-y-1.5">
+                                <div className="flex items-center gap-2 font-bold text-amber-700 dark:text-amber-400">
+                                    <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                                    <span>{warn.type}</span>
+                                </div>
+                                <p className="text-zinc-700 dark:text-zinc-300 pl-5">{warn.description}</p>
+                                <div className="pl-5 flex items-start gap-1.5 bg-white dark:bg-zinc-900 rounded p-2 border border-amber-100 dark:border-amber-900/50">
+                                    <Info className="h-3 w-3 text-blue-500 flex-shrink-0 mt-0.5" />
+                                    <p className="text-blue-600 dark:text-blue-400"><span className="font-bold">Fix:</span> {warn.fix}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 {/* ── URL Health Check Content ── */}
 
                 {/* ── URL Health Check ── */}
@@ -1041,7 +1064,7 @@ export default function SitemapPage() {
                     if (currentSm.healthStatus === "ERROR") {
                         setNotification({
                             type: "error",
-                            text: `The sitemap ${currentSm.path} contains errors. Email report status: ${currentSm.emailResponse?.statusText || 'Unknown'}.`,
+                            text: `The sitemap ${currentSm.path} contains errors.`,
                             debug: currentSm.emailResponse
                         });
                     } else if (currentSm.healthStatus === "ACTIVE") {

@@ -69,21 +69,31 @@ export async function POST(request) {
         }
 
         let emailResponse = null;
-        if (recipientEmail && result.status !== "SUCCESS") {
-            console.log(`[HEALTH-CHECK] Triggering email report to: ${recipientEmail} for sitemap: ${sitemap.feedpath}`);
-            const emailResult = await sendHealthCheckEmail({
-                to: recipientEmail,
-                sitemapUrl: sitemap.feedpath,
-                status: result.status,
-                summary: result.summary,
-                errorLogs: result.errors,
-            });
-            console.log(`[HEALTH-CHECK] Email send result:`, emailResult);
-            emailResponse = emailResult.rawResponse;
-        } else if (!recipientEmail) {
-            console.warn(`[HEALTH-CHECK] No email recipient found for health check report (User: ${userId})`);
+        if (recipientEmail) {
+            const recipients = recipientEmail.split(",").map(r => r.trim()).filter(r => r);
+            console.log(`[HEALTH-CHECK] Triggering email report to ${recipients.length} recipients for sitemap: ${sitemap.feedpath} (status: ${result.status})`);
+
+            const emailResults = await Promise.all(recipients.map(async (to) => {
+                try {
+                    return await sendHealthCheckEmail({
+                        to,
+                        sitemapUrl: sitemap.feedpath,
+                        status: result.status,
+                        summary: result.summary,
+                        errorLogs: result.errors,
+                    });
+                } catch (err) {
+                    console.error(`[HEALTH-CHECK] Failed to send email to ${to}:`, err.message);
+                    return { success: false, error: err.message };
+                }
+            }));
+
+            // Store the first successful raw response or the last error for the log
+            const successResult = emailResults.find(r => r.success);
+            emailResponse = (successResult || emailResults[emailResults.length - 1])?.rawResponse;
+            console.log(`[HEALTH-CHECK] Group email sending completed. Successes: ${emailResults.filter(r => r.success).length}/${recipients.length}`);
         } else {
-            console.log(`[HEALTH-CHECK] Check successful, skipping email for: ${sitemap.feedpath}`);
+            console.warn(`[HEALTH-CHECK] No email recipient found for health check report (User: ${userId})`);
         }
 
         // 6. Save Log (with emailResponse if available)

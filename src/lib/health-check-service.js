@@ -168,11 +168,32 @@ export async function performHealthCheck(feedpath) {
 
         // Populate error details for the email/log
         scanErrors.forEach(err => {
+            // Build a meaningful description instead of "Unknown error"
+            let description = err.errorDetail;
+            if (!description) {
+                if (err.category === "redirect") {
+                    description = `Redirects to ${err.redirectUrl || 'another URL'} — the sitemap should use the final canonical URL directly.`;
+                } else if (err.category === "not_found") {
+                    description = `HTTP ${err.status || 404} — Page not found. This URL no longer exists or has been removed.`;
+                } else if (err.category === "server_error") {
+                    description = `HTTP ${err.status || 500} — Server error. The server failed to respond correctly.`;
+                } else if (err.status === 403) {
+                    description = `HTTP 403 — Access forbidden. The server is blocking requests to this URL.`;
+                } else if (err.status === 401) {
+                    description = `HTTP 401 — Unauthorized. This URL requires authentication.`;
+                } else if (err.status === 410) {
+                    description = `HTTP 410 — Gone. This URL has been permanently removed.`;
+                } else if (err.status) {
+                    description = `HTTP ${err.status} (${err.statusText || 'Error'}) — The server returned an unexpected response.`;
+                } else {
+                    description = `${err.statusText || 'Connection failed'} — Could not reach this URL. The server may be down or the DNS may not resolve.`;
+                }
+            }
             errors.push({
                 url: err.url,
                 type: err.statusText,
                 code: err.status,
-                description: err.errorDetail || (err.category === "redirect" ? `Redirect to ${err.redirectUrl}` : "Unknown error"),
+                description,
             });
         });
 
