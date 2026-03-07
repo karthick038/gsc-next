@@ -23,6 +23,8 @@ export default function AdminSettingsPage() {
         faviconUrl: "",
         logoWidth: "",
         logoHeight: "",
+        emailProvider: "EmailJS",
+        brevoApiKey: "",
         senderEmail: "",
         emailjsServiceId: "",
         emailjsTemplateId: "",
@@ -33,6 +35,7 @@ export default function AdminSettingsPage() {
     });
     const [activeTab, setActiveTab] = useState("general");
     const [loading, setLoading] = useState(true);
+    const [savedProvider, setSavedProvider] = useState("EmailJS");
     const [saving, setSaving] = useState(false);
     const [testing, setTesting] = useState(false);
     const [message, setMessage] = useState({ type: "", text: "" });
@@ -50,6 +53,8 @@ export default function AdminSettingsPage() {
                         logoWidth: data.logoWidth || "",
                         logoHeight: data.logoHeight || "",
 
+                        emailProvider: data.emailProvider || "EmailJS",
+                        brevoApiKey: data.brevoApiKey || "",
                         senderEmail: data.senderEmail || "",
                         emailjsServiceId: data.emailjsServiceId || "",
                         emailjsTemplateId: data.emailjsTemplateId || "",
@@ -58,6 +63,7 @@ export default function AdminSettingsPage() {
                         emailjsPublicKey: data.emailjsPublicKey || "",
                         emailjsPrivateKey: data.emailjsPrivateKey || "",
                     });
+                    setSavedProvider(data.emailProvider || "EmailJS");
 
                 }
             } catch (error) {
@@ -167,6 +173,8 @@ export default function AdminSettingsPage() {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
+                    emailProvider: settings.emailProvider,
+                    brevoApiKey: settings.brevoApiKey,
                     senderEmail: settings.senderEmail,
                     emailjsServiceId: settings.emailjsServiceId,
                     emailjsTemplateId: settings.emailjsTemplateId,
@@ -179,7 +187,7 @@ export default function AdminSettingsPage() {
             });
             if (res.ok) {
                 setMessage({ type: "success", text: "Email configuration saved successfully!" });
-
+                setSavedProvider(settings.emailProvider);
             } else {
                 const data = await res.json();
                 setMessage({ type: "error", text: data.error || "Failed to save email config" });
@@ -200,6 +208,8 @@ export default function AdminSettingsPage() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
+                    emailProvider: settings.emailProvider,
+                    brevoApiKey: settings.brevoApiKey,
                     senderEmail: settings.senderEmail,
                     emailjsServiceId: settings.emailjsServiceId,
                     emailjsTemplateId: settings.emailjsTemplateId,
@@ -207,6 +217,7 @@ export default function AdminSettingsPage() {
                     emailjsTemplateIdFailed: settings.emailjsTemplateIdFailed,
                     emailjsPublicKey: settings.emailjsPublicKey,
                     emailjsPrivateKey: settings.emailjsPrivateKey,
+                    siteTitle: settings.siteTitle
                 }),
 
             });
@@ -416,96 +427,168 @@ export default function AdminSettingsPage() {
                 <TabsContent value="email">
                     <Card className="border-zinc-200 shadow-sm overflow-hidden">
                         <CardHeader className="bg-zinc-50/50 border-bottom border-zinc-100">
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <Mail className="h-5 w-5 text-blue-600" />
-                                EmailJS Configuration
-                            </CardTitle>
-                            <CardDescription>Configure your EmailJS credentials for sitemap health check email reports.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-6 space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
-                                        <Zap className="h-3 w-3" /> Service ID
-                                    </label>
-                                    <Input
-                                        value={settings.emailjsServiceId}
-                                        onChange={(e) => setSettings({ ...settings, emailjsServiceId: e.target.value })}
-                                        placeholder="service_..."
-                                        className="h-10 border-zinc-200"
-                                    />
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div>
+                                    <CardTitle className="text-lg flex items-center gap-2">
+                                        <Mail className="h-5 w-5 text-blue-600" />
+                                        Email Configuration
+                                    </CardTitle>
+                                    <CardDescription>Select your provider and configure credentials.</CardDescription>
                                 </div>
-                                {/* ── Template: Passed ── */}
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
-                                        <FileText className="h-3 w-3 text-green-500" /> Passed Template ID
-                                    </label>
-                                    <Input
-                                        value={settings.emailjsTemplateIdSuccess || ""}
-                                        onChange={(e) => setSettings({ ...settings, emailjsTemplateIdSuccess: e.target.value })}
-                                        placeholder="template_3esex02 (sent when no errors)"
-                                        className="h-10 border-zinc-200"
-                                    />
-                                    <p className="text-[10px] text-green-600 font-medium">Sent when sitemap has <strong>no errors</strong></p>
-                                </div>
-                                {/* ── Template: Failed ── */}
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
-                                        <FileText className="h-3 w-3 text-red-500" /> Failed Template ID
-                                    </label>
-                                    <Input
-                                        value={settings.emailjsTemplateIdFailed || ""}
-                                        onChange={(e) => setSettings({ ...settings, emailjsTemplateIdFailed: e.target.value })}
-                                        placeholder="template_ds18osi (sent when errors found)"
-                                        className="h-10 border-zinc-200"
-                                    />
-                                    <p className="text-[10px] text-red-500 font-medium">Sent when sitemap has <strong>errors</strong></p>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
-                                        <ShieldCheck className="h-3 w-3" /> Public Key
-                                    </label>
-                                    <Input
-                                        value={settings.emailjsPublicKey}
-                                        onChange={(e) => setSettings({ ...settings, emailjsPublicKey: e.target.value })}
-                                        placeholder="user_..."
-                                        className="h-10 border-zinc-200"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
-                                        <Key className="h-3 w-3" /> Private Key (Optional)
-                                    </label>
-                                    <Input
-                                        type="password"
-                                        value={settings.emailjsPrivateKey}
-                                        onChange={(e) => setSettings({ ...settings, emailjsPrivateKey: e.target.value })}
-                                        placeholder="Access Token"
-                                        className="h-10 border-zinc-200"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
-                                        <User className="h-3 w-3" /> Sender Email
-                                    </label>
-                                    <Input
-                                        type="email"
-                                        value={settings.senderEmail}
-                                        onChange={(e) => setSettings({ ...settings, senderEmail: e.target.value })}
-                                        placeholder="support@example.com"
-                                        className="h-10 border-zinc-200"
-                                    />
-                                    <p className="text-[10px] text-zinc-400 italic">Used as the support/reply email in templates.</p>
-                                </div>
-                                <div className="md:col-span-2 p-3 bg-blue-50/50 rounded-lg border border-blue-100">
-                                    <p className="text-[11px] text-blue-700 leading-relaxed">
-                                        <strong>EmailJS Template variables supported:</strong> <br />
-                                        <code>&#123;&#123;to_email&#125;&#125;</code>, <code>&#123;&#123;website_link&#125;&#125;</code>, <code>&#123;&#123;company_name&#125;&#125;</code>, <code>&#123;&#123;sitemap_url&#125;&#125;</code>,
-                                        <code>&#123;&#123;checked_time&#125;&#125;</code>, <code>&#123;&#123;total_urls&#125;&#125;</code>, <code>&#123;&#123;total_errors&#125;&#125;</code>,
-                                        <code>&#123;&#123;error_rows&#125;&#125;</code>, <code>&#123;&#123;support_email&#125;&#125;</code>
-                                    </p>
+                                <div className="flex items-center bg-zinc-100/80 p-1 rounded-full border border-zinc-200/50 shadow-inner">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setSettings({ ...settings, emailProvider: "EmailJS" })}
+                                        className={cn(
+                                            "relative px-6 h-8 text-xs font-bold transition-all rounded-full",
+                                            settings.emailProvider === "EmailJS"
+                                                ? "bg-white shadow-sm text-blue-600 ring-1 ring-zinc-200"
+                                                : "text-zinc-500 hover:text-zinc-700 hover:bg-zinc-200/50"
+                                        )}
+                                    >
+                                        EmailJS
+                                        {savedProvider === "EmailJS" && (
+                                            <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border border-white"></span>
+                                            </span>
+                                        )}
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setSettings({ ...settings, emailProvider: "Brevo" })}
+                                        className={cn(
+                                            "relative px-6 h-8 text-xs font-bold transition-all rounded-full",
+                                            settings.emailProvider === "Brevo"
+                                                ? "bg-white shadow-sm text-blue-600 ring-1 ring-zinc-200"
+                                                : "text-zinc-500 hover:text-zinc-700 hover:bg-zinc-200/50"
+                                        )}
+                                    >
+                                        Brevo
+                                        {savedProvider === "Brevo" && (
+                                            <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border border-white"></span>
+                                            </span>
+                                        )}
+                                    </Button>
                                 </div>
                             </div>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-6">
+                            {settings.emailProvider === "EmailJS" ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                            <Zap className="h-3 w-3" /> Service ID
+                                        </label>
+                                        <Input
+                                            value={settings.emailjsServiceId}
+                                            onChange={(e) => setSettings({ ...settings, emailjsServiceId: e.target.value })}
+                                            placeholder="service_..."
+                                            className="h-10 border-zinc-200"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                            <FileText className="h-3 w-3 text-green-500" /> Passed Template ID
+                                        </label>
+                                        <Input
+                                            value={settings.emailjsTemplateIdSuccess || ""}
+                                            onChange={(e) => setSettings({ ...settings, emailjsTemplateIdSuccess: e.target.value })}
+                                            placeholder="template_..."
+                                            className="h-10 border-zinc-200"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                            <FileText className="h-3 w-3 text-red-500" /> Failed Template ID
+                                        </label>
+                                        <Input
+                                            value={settings.emailjsTemplateIdFailed || ""}
+                                            onChange={(e) => setSettings({ ...settings, emailjsTemplateIdFailed: e.target.value })}
+                                            placeholder="template_..."
+                                            className="h-10 border-zinc-200"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                            <ShieldCheck className="h-3 w-3" /> Public Key
+                                        </label>
+                                        <Input
+                                            value={settings.emailjsPublicKey}
+                                            onChange={(e) => setSettings({ ...settings, emailjsPublicKey: e.target.value })}
+                                            placeholder="user_..."
+                                            className="h-10 border-zinc-200"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                            <Key className="h-3 w-3" /> Private Key (Optional)
+                                        </label>
+                                        <Input
+                                            type="password"
+                                            value={settings.emailjsPrivateKey}
+                                            onChange={(e) => setSettings({ ...settings, emailjsPrivateKey: e.target.value })}
+                                            placeholder="Access Token"
+                                            className="h-10 border-zinc-200"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                            <User className="h-3 w-3" /> Sender Email
+                                        </label>
+                                        <Input
+                                            type="email"
+                                            value={settings.senderEmail}
+                                            onChange={(e) => setSettings({ ...settings, senderEmail: e.target.value })}
+                                            placeholder="support@example.com"
+                                            className="h-10 border-zinc-200"
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2 p-3 bg-blue-50/50 rounded-lg border border-blue-100">
+                                        <p className="text-[11px] text-blue-700 leading-relaxed font-medium">
+                                            <strong>EmailJS template variables:</strong> <code>&#123;&#123;to_email&#125;&#125;</code>, <code>&#123;&#123;company_name&#125;&#125;</code>, <code>&#123;&#123;sitemap_url&#125;&#125;</code>, <code>&#123;&#123;error_rows&#125;&#125;</code>
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                            <Key className="h-3 w-3 text-orange-500" /> Brevo API Key
+                                        </label>
+                                        <Input
+                                            type="password"
+                                            value={settings.brevoApiKey}
+                                            onChange={(e) => setSettings({ ...settings, brevoApiKey: e.target.value })}
+                                            placeholder="xkeysib-..."
+                                            className="h-10 border-zinc-200"
+                                        />
+                                        <p className="text-[10px] text-zinc-400 italic">Found in your Brevo Dashboard under SMTP & API Keys.</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                            <User className="h-3 w-3" /> Sender Email
+                                        </label>
+                                        <Input
+                                            type="email"
+                                            value={settings.senderEmail}
+                                            onChange={(e) => setSettings({ ...settings, senderEmail: e.target.value })}
+                                            placeholder="support@example.com"
+                                            className="h-10 border-zinc-200"
+                                        />
+                                        <p className="text-[10px] text-zinc-400 italic">Important: Must be a verified sender in your Brevo account.</p>
+                                    </div>
+                                    <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-100">
+                                        <p className="text-[11px] text-emerald-800 leading-relaxed font-medium">
+                                            <strong>Brevo Support:</strong> We use direct API delivery with a professionally formatted HTML report. No template setup required in Brevo!
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="pt-6 border-t border-zinc-100 flex gap-3">
                                 <Button
@@ -514,7 +597,7 @@ export default function AdminSettingsPage() {
                                     className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 shadow-sm transition-all active:scale-95"
                                 >
                                     {testing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Server className="h-4 w-4 mr-2" />}
-                                    Test EmailJS Connection
+                                    Test {settings.emailProvider} Connection
                                 </Button>
                             </div>
                         </CardContent>
