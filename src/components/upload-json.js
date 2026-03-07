@@ -468,7 +468,7 @@ export default function UploadJSON() {
             </div>
 
             <Dialog open={showForm} onOpenChange={setShowForm}>
-                <DialogContent className="sm:max-w-2xl border-zinc-200 shadow-2xl overflow-hidden p-0">
+                <DialogContent className="sm:max-w-2xl border-zinc-200 shadow-2xl overflow-hidden p-0 flex flex-col max-h-[85vh] w-[95vw] sm:w-full">
                     <DialogHeader className="p-6 bg-zinc-50 border-b">
                         <DialogTitle className="text-xl font-bold flex items-center gap-2">
                             <Plus className="h-5 w-5 text-blue-600" />
@@ -479,7 +479,7 @@ export default function UploadJSON() {
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="p-6 space-y-6">
+                    <div className="p-6 space-y-6 overflow-y-auto flex-1 min-h-0">
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
                                 <Globe className="h-3.5 w-3.5 text-zinc-400" />
