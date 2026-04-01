@@ -844,7 +844,7 @@ export default function AdminSettingsPage() {
                                             )} />
                                         </div>
                                     </div>
-                                    <CardDescription>Automated 5-minute smart batching system.</CardDescription>
+                                    <CardDescription>Bi-weekly report dispatch on Fridays at 6:00 PM IST.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="p-4 bg-zinc-50 rounded-lg border border-zinc-100 space-y-3">
@@ -854,7 +854,7 @@ export default function AdminSettingsPage() {
                                         </div>
                                         <div className="flex items-center justify-between text-xs">
                                             <span className="text-zinc-500 font-medium">Schedule</span>
-                                            <span className="text-emerald-700 font-bold">5-Minute Smart Batching</span>
+                                            <span className="text-emerald-700 font-bold">14-Day Friday Evening (6 PM IST)</span>
                                         </div>
                                         <div className="flex items-center justify-between text-xs border-t border-zinc-200 pt-3">
                                             <span className="text-zinc-500 font-medium flex items-center gap-1">
@@ -873,7 +873,7 @@ export default function AdminSettingsPage() {
                                                        minute: '2-digit', 
                                                        hour12: true 
                                                      })} IST`)
-                                                  : (queue.length > 0 ? "Initial 5-min timer active..." : "Waiting for sitemaps...")}
+                                                  : (queue.length > 0 ? "Waiting for 14-day Friday window..." : "Waiting for sitemaps...")}
                                             </span>
                                         </div>
                                     </div>
