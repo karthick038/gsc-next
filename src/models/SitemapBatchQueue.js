@@ -30,6 +30,10 @@ const SitemapBatchQueueSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        responseTimeMs: {
+            type: Number,
+            default: 0,
+        },
         errorLogs: {
             type: [Object],
             default: [],
