@@ -52,3 +52,15 @@ db_check_results.json
 check_db.js
 trigger_health_check.js
 *.json.bak
+
+# Local Debug Scripts
+check_db_emails.mjs
+test_sitemap_email.mjs
+test_sitemap_email.js
+
+# Deployment & Server Scripts
+deploy.sh
+
+# Logs
+*.log
+logs/

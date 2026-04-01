@@ -63,7 +63,7 @@ export async function POST(request) {
 
             const payload = {
                 service_id: emailjsServiceId,
-                template_id: emailjsTemplateId || "template_ds18osi",
+                template_id: emailjsTemplateId, // Use the user's provided template
                 user_id: emailjsPublicKey,
                 accessToken: emailjsPrivateKey,
                 template_params: {
