@@ -11,6 +11,21 @@ async function getEmailSettings() {
 }
 
 const APP_NAME = "Google Search Console Analytics";
+const GSC_BASE_URL = "https://search.google.com/search-console/sitemaps";
+
+/**
+ * Generates a GSC link for a sitemap URL by extracting the origin.
+ * Standard GSC properties use the origin as the resource_id.
+ */
+function getGSCLink(sitemapUrl) {
+    try {
+        const url = new URL(sitemapUrl);
+        const resourceId = encodeURIComponent(url.origin + "/");
+        return `${GSC_BASE_URL}?resource_id=${resourceId}`;
+    } catch (err) {
+        return GSC_BASE_URL;
+    }
+}
 
 /**
  * Main entry point for sending health check emails.
@@ -89,12 +104,19 @@ async function sendEmailViaEmailJS({
                         </p>
                     </div>
 
-                    <!-- Sitemap Badge -->
-                    <div style="padding: 20px 35px; background-color: #f1f5f9; border-bottom: 1px solid #e2e8f0;">
-                        <p style="margin: 0; font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Checked Sitemap</p>
-                        <div style="font-size: 14px; color: #1e293b; font-weight: 600; word-break: break-all; font-family: ui-monospace, SFMono-Regular, monospace;">
-                            ${sitemapUrl}
+                    <!-- Sitemap Badge & Action -->
+                    <div style="padding: 25px 35px; background-color: #f1f5f9; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
+                        <div style="flex: 1; min-width: 250px;">
+                            <p style="margin: 0; font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Checked Sitemap</p>
+                            <div style="font-size: 14px; color: #1e293b; font-weight: 600; word-break: break-all; font-family: ui-monospace, SFMono-Regular, monospace;">
+                                ${sitemapUrl}
+                            </div>
                         </div>
+                        ${isSuccess ? `
+                        <a href="${getGSCLink(sitemapUrl)}" style="display: inline-block; padding: 12px 22px; background-color: ${accentColor}; color: #ffffff; text-decoration: none; border-radius: 10px; font-size: 13px; font-weight: 900; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); white-space: nowrap; transition: transform 0.2s ease;">
+                            View Full Report in GSC
+                        </a>
+                        ` : ''}
                     </div>
 
                     <div style="padding: 35px;">
@@ -360,56 +382,55 @@ export async function performSitemapBatchDispatch({ to, submissions }) {
                 url: err.url,
                 type: err.type,
                 code: err.code || '-',
-                description: err.description || `Sitemap: ${s.sitemapUrl}`
+                description: err.description || `Sitemap: ${s.sitemapUrl}`,
+                parentSitemap: s.sitemapUrl
             });
         });
     });
 
     // 4-COLUMN LOGIC FOR USER'S EMAILJS TEMPLATE (URL, Type, Code, Description)
+    // Now including the parent sitemap in the description for extreme clarity
     const emailJS_error_rows = allErrorsFlattened.map(err => `
         <tr>
-            <td style="padding: 10px; border: 1px solid #eceff1; font-size: 12px; font-family: monospace; word-break: break-all;">${err.url}</td>
-            <td style="padding: 10px; border: 1px solid #eceff1; font-weight: bold; color: #d32f2f; font-size: 11px;">${err.type}</td>
-            <td style="padding: 10px; border: 1px solid #eceff1; text-align: center; font-weight: bold; color: #455a64;">${err.code}</td>
-            <td style="padding: 10px; border: 1px solid #eceff1; font-size: 11px; color: #607d8b;">${err.description}</td>
+            <td style="padding: 14px 12px; border-bottom: 1px solid #f1f5f9; font-size: 11px; font-family: ui-monospace, monospace; word-break: break-all; color: #1e293b;">${err.url}</td>
+            <td style="padding: 14px 12px; border-bottom: 1px solid #f1f5f9; font-weight: 800; color: #e11d48; font-size: 10px; text-transform: uppercase;">${err.type}</td>
+            <td style="padding: 14px 12px; border-bottom: 1px solid #f1f5f9; text-align: center; font-weight: 800; color: #64748b; font-size: 11px;">${err.code}</td>
+            <td style="padding: 14px 12px; border-bottom: 1px solid #f1f5f9; font-size: 11px; color: #475569; line-height: 1.4;">${err.description}</td>
         </tr>
     `).join('');
 
-    // PREVIEW TABLE ROWS (For the full HTML content)
+    const totalErrors = submissions.filter(s => s.healthStatus === "ERROR" || (s.errorCount || 0) > 0).length;
+    const totalPassed = submissions.length - totalErrors;
+
     const sitemapSummaryTableRows = submissions.map(s => {
         const isError = s.healthStatus === "ERROR" || (s.errorCount > 0);
-        const statusLabel = isError ? "❌ Error" : "✅ Passed";
+        const statusLabel = isError ? "❌ Failed" : "✅ Passed";
         const statusColor = isError ? "#e11d48" : "#10b981";
         const statusBg = isError ? "#fff1f2" : "#f0fdf4";
         const badgeBorder = isError ? "#ffe4e6" : "#dcfce7";
 
-        const errorRows = (s.errorLogs || []).map(err => `
-            <div style="margin-top: 8px; padding: 10px 14px; background-color: #fafbfc; border-left: 3px solid #f43f5e; border-radius: 6px; font-size: 11px; color: #1e293b; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-                <strong style="color: #e11d48; display: block; margin-bottom: 3px;">${err.type}</strong> 
-                <div style="font-family: ui-monospace, SFMono-Regular, menlo, monaco, consolas, monospace; word-break: break-all; opacity: 0.8; font-size: 10px;">${err.url}</div>
-                <div style="font-size: 10px; opacity: 0.6; margin-top: 5px; font-style: italic;">${err.description || ''}</div>
-            </div>
-        `).join('');
-
         return `
             <tr>
-                <td style="padding: 20px 15px; border-bottom: 1px solid #f1f5f9; font-size: 13px; color: #1e293b; font-weight: 700; word-break: break-all; vertical-align: top;">
-                    <div style="margin-bottom: 6px; font-family: ui-monospace, monospace; color: #475569; letter-spacing: -0.01em;">${s.sitemapUrl}</div>
-                    ${errorRows ? `<div style="margin-top: 15px;">${errorRows}</div>` : ''}
+                <td style="padding: 20px 15px; border-bottom: 1px solid #f1f5f9; font-size: 14px; font-family: ui-monospace, monospace; color: #1e293b; font-weight: 600; word-break: break-all; vertical-align: top;">
+                    ${s.sitemapUrl}
                 </td>
-                <td style="padding: 20px 15px; border-bottom: 1px solid #f1f5f9; vertical-align: top; width: 100px;">
+                <td style="padding: 20px 15px; border-bottom: 1px solid #f1f5f9; vertical-align: top; width: 110px;">
                     <span style="display: inline-block; padding: 5px 12px; border-radius: 50px; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; background-color: ${statusBg}; color: ${statusColor}; border: 1px solid ${badgeBorder}; white-space: nowrap;">
                         ${statusLabel}
                     </span>
                 </td>
                 <td style="padding: 20px 15px; border-bottom: 1px solid #f1f5f9; font-size: 15px; font-weight: 900; color: ${isError ? '#e11d48' : '#059669'}; vertical-align: top; text-align: center;">${s.errorCount || 0}</td>
-                <td style="padding: 20px 15px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #94a3b8; vertical-align: top; text-align: right; font-weight: 600;">${new Date(s.submittedAt).toLocaleDateString()}</td>
+                ${totalErrors === 0 ? `
+                <td style="padding: 20px 15px; border-bottom: 1px solid #f1f5f9; text-align: right; vertical-align: top;">
+                    <a href="${getGSCLink(s.sitemapUrl)}" style="display: inline-block; padding: 8px 16px; background-color: #f8fafc; border: 1px solid #e2e8f0; color: #1e293b; text-decoration: none; border-radius: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; transition: all 0.2s;">
+                        View in GSC
+                    </a>
+                </td>
+                ` : ''}
             </tr>
         `;
     }).join('');
 
-    const totalErrors = submissions.filter(s => s.healthStatus === "ERROR" || s.errorCount > 0).length;
-    const totalPassed = submissions.length - totalErrors;
     const reportSubject = totalErrors > 0
         ? `⚠️ Sitemap Batch Report — ${totalErrors} Issue(s) Found`
         : `✅ Sitemap Batch Report — All Clear`;
@@ -451,10 +472,10 @@ export async function performSitemapBatchDispatch({ to, submissions }) {
                     <table style="width: 100%; border-collapse: collapse; min-width: 600px;">
                         <thead>
                             <tr style="background-color: #f8fafc;">
-                                <th style="padding: 15px; text-align: left; font-size: 10px; font-weight: 900; text-transform: uppercase; color: #64748b; letter-spacing: 0.1em; border-bottom: 2px solid #f1f5f9;">Sitemap Intelligence</th>
+                                <th style="padding: 15px; text-align: left; font-size: 10px; font-weight: 900; text-transform: uppercase; color: #64748b; letter-spacing: 0.1em; border-bottom: 2px solid #f1f5f9;">Sitemap Identifier</th>
                                 <th style="padding: 15px; text-align: left; font-size: 10px; font-weight: 900; text-transform: uppercase; color: #64748b; letter-spacing: 0.1em; border-bottom: 2px solid #f1f5f9; width: 110px;">Status</th>
                                 <th style="padding: 15px; text-align: center; font-size: 10px; font-weight: 900; text-transform: uppercase; color: #64748b; letter-spacing: 0.1em; border-bottom: 2px solid #f1f5f9; width: 80px;">Issues</th>
-                                <th style="padding: 15px; text-align: right; font-size: 10px; font-weight: 900; text-transform: uppercase; color: #64748b; letter-spacing: 0.1em; border-bottom: 2px solid #f1f5f9; width: 100px;">Date</th>
+                                ${totalErrors === 0 ? `<th style="padding: 15px; text-align: right; font-size: 10px; font-weight: 900; text-transform: uppercase; color: #64748b; letter-spacing: 0.1em; border-bottom: 2px solid #f1f5f9; width: 120px;">Action</th>` : ''}
                             </tr>
                         </thead>
                         <tbody>
@@ -462,6 +483,41 @@ export async function performSitemapBatchDispatch({ to, submissions }) {
                         </tbody>
                     </table>
                 </div>
+
+                ${allErrorsFlattened.length > 0 ? `
+                    <!-- Detailed One-By-One Breakdown -->
+                    <div style="padding: 25px 35px 35px;">
+                        <h3 style="font-size: 14px; font-weight: 900; color: #1e293b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                             Detailed Issues Breakdown
+                        </h3>
+                        <div style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <thead style="background-color: #f8fafc;">
+                                    <tr>
+                                        <th style="padding: 12px; text-align: left; font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0;">Failing URL</th>
+                                        <th style="padding: 12px; text-align: left; font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; width: 100px;">Type</th>
+                                        <th style="padding: 12px; text-align: center; font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; width: 60px;">Code</th>
+                                        <th style="padding: 12px; text-align: left; font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0;">Sitemap Source</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${allErrorsFlattened.map(err => `
+                                        <tr>
+                                            <td style="padding: 14px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #1e293b; font-family: ui-monospace, monospace; word-break: break-all;">${err.url}</td>
+                                            <td style="padding: 14px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top;">
+                                                <span style="display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 9px; font-weight: 800; text-transform: uppercase; background-color: #fff1f2; color: #e11d48; border: 1px solid #ffe4e6; white-space: nowrap;">
+                                                    ${err.type}
+                                                </span>
+                                            </td>
+                                            <td style="padding: 14px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #64748b; font-weight: 700; text-align: center;">${err.code}</td>
+                                            <td style="padding: 14px 12px; border-bottom: 1px solid #f1f5f9; font-size: 11px; color: #94a3b8; font-style: italic; word-break: break-all;">${err.parentSitemap}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                ` : ''}
 
                 <!-- Footer Summary -->
                 <div style="padding: 30px 40px; background-color: #f8fafc; border-top: 1px solid #f1f5f9; text-align: center;">
