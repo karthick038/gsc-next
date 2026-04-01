@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import Settings from "@/models/Settings";
-import connectDB from "@/lib/db";
-import Settings from "@/models/Settings";
+import SitemapLog from "@/models/SitemapLog";
 
 // This route has a shared secret so only our internal worker can trigger it
 const INTERNAL_SECRET = process.env.INTERNAL_CRON_SECRET || "gsc-internal-cron-2026";
