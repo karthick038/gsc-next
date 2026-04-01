@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Settings as SettingsIcon, Upload, Globe, Image as ImageIcon, Check, Loader2, Save, Mail, Server, Key, User, Zap, ShieldCheck, FileText } from "lucide-react";
+import { Settings as SettingsIcon, Upload, Globe, Image as ImageIcon, Check, Loader2, Save, Mail, Server, Key, User, Zap, ShieldCheck, FileText, Calendar, ListTodo, History, Send, Clock3, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -30,15 +30,26 @@ export default function AdminSettingsPage() {
         emailjsTemplateId: "",
         emailjsTemplateIdSuccess: "",
         emailjsTemplateIdFailed: "",
-        emailjsPublicKey: "",
         emailjsPrivateKey: "",
+        sitemapBatchingEnabled: true,
+        sitemapLastRunDate: null,
+        nextRunDate: null,
+        notificationEmail: "",
     });
+    const [queue, setQueue] = useState([]);
+    const [logs, setLogs] = useState([]);
+    const [loadingQueue, setLoadingQueue] = useState(false);
+    const [sendingBatch, setSendingBatch] = useState(false);
     const [activeTab, setActiveTab] = useState("general");
+    const [confirmSendBatch, setConfirmSendBatch] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [emailError, setEmailError] = useState(false);
     const [savedProvider, setSavedProvider] = useState("EmailJS");
     const [saving, setSaving] = useState(false);
     const [testing, setTesting] = useState(false);
     const [message, setMessage] = useState({ type: "", text: "" });
+    const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+    const [deletingItems, setDeletingIds] = useState(new Set());
     const [cropModalOpen, setCropModalOpen] = useState(false);
     const [tempFaviconSrc, setTempFaviconSrc] = useState(null);
 
@@ -62,6 +73,7 @@ export default function AdminSettingsPage() {
                         emailjsTemplateIdFailed: data.emailjsTemplateIdFailed || "",
                         emailjsPublicKey: data.emailjsPublicKey || "",
                         emailjsPrivateKey: data.emailjsPrivateKey || "",
+                        notificationEmail: data.notificationEmail || "",
                     });
                     setSavedProvider(data.emailProvider || "EmailJS");
 
@@ -74,6 +86,62 @@ export default function AdminSettingsPage() {
         };
         fetchSettings();
     }, []);
+
+    const [isProcessing, setIsProcessing] = useState(false);
+
+    useEffect(() => {
+        const fetchSitemapData = async () => {
+            const isActive = isProcessing || settings.isProcessing;
+            const startTime = Date.now();
+            
+            try {
+                // 1. Fetch Queue
+                const queueRes = await fetch("/api/admin/sitemap/queue");
+                if (queueRes.ok) {
+                    const queueData = await queueRes.json();
+                    if (queueData.items) {
+                        setQueue(queueData.items);
+                        setIsProcessing(queueData.isProcessing);
+                        console.log(`[SCHEDULER-DEBUG] Queue Fetched: ${queueData.items.length} items. isProcessing: ${queueData.isProcessing}`);
+                    }
+                }
+
+                // 2. Fetch Settings
+                const settingsRes = await fetch("/api/settings");
+                if (settingsRes.ok) {
+                    const settingsData = await settingsRes.json();
+                    setSettings(prev => ({
+                        ...prev,
+                        ...settingsData,
+                        logoWidth: settingsData.logoWidth || "",
+                        logoHeight: settingsData.logoHeight || ""
+                    }));
+                    console.log(`[SCHEDULER-DEBUG] Settings Fetched. nextRunDate: ${settingsData.nextRunDate}. Latency: ${Date.now() - startTime}ms`);
+                }
+
+                // 3. Fetch Logs
+                const logsRes = await fetch("/api/admin/sitemap/logs");
+                if (logsRes.ok) {
+                    const logsData = await logsRes.json();
+                    if (logsData.logs) {
+                        setLogs(logsData.logs);
+                    }
+                }
+            } catch (error) {
+                console.error("[SCHEDULER-DEBUG] Fetch error:", error);
+            } finally {
+                setLoadingQueue(false);
+            }
+        };
+
+        if (activeTab === "sitemap-scheduler") {
+            const intervalDuration = (isProcessing || settings.isProcessing) ? 3000 : 30000;
+            console.log(`[SCHEDULER-DEBUG] Starting polling cycle. Interval: ${intervalDuration}ms. activeTab: ${activeTab}`);
+            fetchSitemapData();
+            const interval = setInterval(fetchSitemapData, intervalDuration);
+            return () => clearInterval(interval);
+        }
+    }, [activeTab, isProcessing, settings.isProcessing]);
 
     // Sync browser tab branding in real-time
     useEffect(() => {
@@ -164,7 +232,110 @@ export default function AdminSettingsPage() {
         }
     };
 
+    const handleSaveScheduler = async (batchingState = null) => {
+        setSaving(true);
+        setMessage({ type: "", text: "" });
+
+        const isBatchingEnabled = batchingState !== null ? batchingState : settings.sitemapBatchingEnabled;
+
+        try {
+            const res = await fetch("/api/settings", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    sitemapBatchingEnabled: isBatchingEnabled,
+                }),
+            });
+            if (res.ok) {
+                setMessage({ type: "success", text: "Scheduler settings saved successfully!" });
+            } else {
+                const data = await res.json();
+                setMessage({ type: "error", text: data.error || "Failed to save scheduler config" });
+            }
+        } catch (error) {
+            setMessage({ type: "error", text: "Something went wrong" });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSendBatchNow = async () => {
+        if (!confirmSendBatch) {
+            setConfirmSendBatch(true);
+            // Reset after 5 seconds of inactivity
+            setTimeout(() => {
+                setConfirmSendBatch(prev => prev ? false : prev);
+            }, 5000);
+            return;
+        }
+
+        setConfirmSendBatch(false);
+        setSendingBatch(true);
+        setMessage({ type: "", text: "" });
+
+        try {
+            const res = await fetch("/api/admin/sitemap/send-batch", { method: "POST" });
+            const data = await res.json();
+
+            if (res.ok) {
+                const sentTime = data.sentAt ? new Date(data.sentAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : new Date().toLocaleString();
+                setMessage({ 
+                    type: "success", 
+                    text: `Consolidated report sent successfully! Dispatch confirmed on ${sentTime}.` 
+                });
+                setQueue([]); // Clear queue locally
+                setSettings(prev => ({ ...prev, sitemapLastRunDate: new Date() }));
+            } else {
+                setMessage({ type: "error", text: data.error || "Failed to send batch" });
+            }
+        } catch (error) {
+            console.error("sendBatch error:", error);
+            setMessage({ type: "error", text: "Failed to connect to server or invalid response" });
+        } finally {
+            setSendingBatch(false);
+        }
+    };
+
+    const handleRemoveFromQueue = async (id) => {
+        if (confirmDeleteId !== id) {
+            setConfirmDeleteId(id);
+            // Reset confirmation after 5 seconds of inactivity
+            setTimeout(() => {
+                setConfirmDeleteId(prev => prev === id ? null : prev);
+            }, 5000);
+            return;
+        }
+
+        setConfirmDeleteId(null);
+        setDeletingIds(prev => new Set(prev).add(id));
+        try {
+            const res = await fetch(`/api/admin/sitemap/queue/${id}`, { method: "DELETE" });
+            if (res.ok) {
+                setQueue(prev => prev.filter(item => item._id !== id));
+                setMessage({ type: "success", text: "Sitemap removed from queue successfully!" });
+            } else {
+                const data = await res.json();
+                setMessage({ type: "error", text: data.error || "Failed to remove item" });
+            }
+        } catch (error) {
+            setMessage({ type: "error", text: "Failed to connect to server" });
+        } finally {
+            setDeletingIds(prev => {
+                const next = new Set(prev);
+                next.delete(id);
+                return next;
+            });
+        }
+    };
+
     const handleSaveEmail = async () => {
+        if (!settings.notificationEmail?.trim()) {
+            setMessage({ type: "error", text: "Notification Recipient Email is required." });
+            setEmailError(true);
+            return;
+        }
+
+        setEmailError(false);
         setSaving(true);
         setMessage({ type: "", text: "" });
 
@@ -182,6 +353,7 @@ export default function AdminSettingsPage() {
                     emailjsTemplateIdFailed: settings.emailjsTemplateIdFailed,
                     emailjsPublicKey: settings.emailjsPublicKey,
                     emailjsPrivateKey: settings.emailjsPrivateKey,
+                    notificationEmail: settings.notificationEmail,
                 }),
 
             });
@@ -200,6 +372,13 @@ export default function AdminSettingsPage() {
     };
 
     const handleTestConnection = async () => {
+        if (!settings.notificationEmail?.trim()) {
+            setMessage({ type: "error", text: "Notification Recipient Email is required to send a test." });
+            setEmailError(true);
+            return;
+        }
+
+        setEmailError(false);
         setTesting(true);
         setMessage({ type: "", text: "" });
 
@@ -217,6 +396,7 @@ export default function AdminSettingsPage() {
                     emailjsTemplateIdFailed: settings.emailjsTemplateIdFailed,
                     emailjsPublicKey: settings.emailjsPublicKey,
                     emailjsPrivateKey: settings.emailjsPrivateKey,
+                    notificationEmail: settings.notificationEmail,
                     siteTitle: settings.siteTitle
                 }),
 
@@ -250,14 +430,16 @@ export default function AdminSettingsPage() {
                     <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Admin Settings</h1>
                     <p className="text-sm text-zinc-500 mt-1">Manage global branding and email notifications.</p>
                 </div>
-                <Button
-                    onClick={activeTab === "general" ? handleSaveBranding : handleSaveEmail}
-                    disabled={saving}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md shadow-emerald-100 transition-all active:scale-95 px-8"
-                >
-                    {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                    {activeTab === "general" ? "Save Branding" : "Save Email Config"}
-                </Button>
+                {activeTab !== "sitemap-scheduler" && (
+                    <Button
+                        onClick={activeTab === "general" ? handleSaveBranding : handleSaveEmail}
+                        disabled={saving}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md shadow-emerald-100 transition-all active:scale-95 px-8"
+                    >
+                        {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                        {activeTab === "general" ? "Save Branding" : "Save Email Config"}
+                    </Button>
+                )}
             </div>
 
             {message.text && (
@@ -277,6 +459,10 @@ export default function AdminSettingsPage() {
                     <TabsTrigger value="email" className="px-6 data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 font-bold">
                         <Mail className="h-4 w-4 mr-2" />
                         Email Configuration
+                    </TabsTrigger>
+                    <TabsTrigger value="sitemap-scheduler" className="px-6 data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 font-bold">
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Sitemap Scheduler
                     </TabsTrigger>
                 </TabsList>
 
@@ -538,6 +724,19 @@ export default function AdminSettingsPage() {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                            <Mail className="h-3 w-3 text-blue-500" /> Notification Recipient Email <span className="text-red-500">*</span>
+                                        </label>
+                                        <Input
+                                            type="email"
+                                            value={settings.notificationEmail}
+                                            onChange={(e) => { setSettings({ ...settings, notificationEmail: e.target.value }); if (emailError) setEmailError(false); }}
+                                            placeholder="admin@example.com"
+                                            className={cn("h-10 transition-all", emailError ? "border-red-500 ring-1 ring-red-500 shadow-[0_0_0_1px_rgba(239,68,68,0.5)]" : "border-zinc-200")}
+                                        />
+                                        <p className="text-[10px] text-zinc-400 italic">This is where consolidated sitemap reports will be sent.</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
                                             <User className="h-3 w-3" /> Sender Email
                                         </label>
                                         <Input
@@ -571,6 +770,19 @@ export default function AdminSettingsPage() {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                            <Mail className="h-3 w-3 text-blue-500" /> Notification Recipient Email <span className="text-red-500">*</span>
+                                        </label>
+                                        <Input
+                                            type="email"
+                                            value={settings.notificationEmail}
+                                            onChange={(e) => { setSettings({ ...settings, notificationEmail: e.target.value }); if (emailError) setEmailError(false); }}
+                                            placeholder="admin@example.com"
+                                            className={cn("h-10 transition-all", emailError ? "border-red-500 ring-1 ring-red-500 shadow-[0_0_0_1px_rgba(239,68,68,0.5)]" : "border-zinc-200")}
+                                        />
+                                        <p className="text-[10px] text-zinc-400 italic">This is where consolidated sitemap reports will be sent.</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
                                             <User className="h-3 w-3" /> Sender Email
                                         </label>
                                         <Input
@@ -600,6 +812,273 @@ export default function AdminSettingsPage() {
                                     Test {settings.emailProvider} Connection
                                 </Button>
                             </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="sitemap-scheduler" className="space-y-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                        {/* Scheduler Controls */}
+                        <div className="lg:col-span-1 space-y-6">
+                            <Card className="border-zinc-200 shadow-sm">
+                                <CardHeader>
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle className="text-lg flex items-center gap-2">
+                                            <Calendar className="h-5 w-5 text-emerald-600" />
+                                            Scheduler
+                                        </CardTitle>
+                                        <div 
+                                            className={cn(
+                                                "w-12 h-6 rounded-full p-1 cursor-pointer transition-colors duration-200",
+                                                settings.sitemapBatchingEnabled ? "bg-emerald-500" : "bg-zinc-300"
+                                            )}
+                                            onClick={() => {
+                                                const newState = !settings.sitemapBatchingEnabled;
+                                                setSettings({ ...settings, sitemapBatchingEnabled: newState });
+                                                handleSaveScheduler(newState);
+                                            }}
+                                        >
+                                            <div className={cn(
+                                                "w-4 h-4 bg-white rounded-full transition-transform duration-200",
+                                                settings.sitemapBatchingEnabled ? "translate-x-6" : "translate-x-0"
+                                            )} />
+                                        </div>
+                                    </div>
+                                    <CardDescription>Automated 5-minute smart batching system.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="p-4 bg-zinc-50 rounded-lg border border-zinc-100 space-y-3">
+                                        <div className="flex items-center justify-between text-xs">
+                                            <span className="text-zinc-500 font-medium">Last Run Date</span>
+                                            <span className="text-zinc-900 font-bold">{settings.sitemapLastRunDate ? new Date(settings.sitemapLastRunDate).toLocaleDateString() : "Never"}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-xs">
+                                            <span className="text-zinc-500 font-medium">Schedule</span>
+                                            <span className="text-emerald-700 font-bold">5-Minute Smart Batching</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-xs border-t border-zinc-200 pt-3">
+                                            <span className="text-zinc-500 font-medium flex items-center gap-1">
+                                                <Clock3 className="h-3 w-3" /> Next Run
+                                            </span>
+                                            <span className="text-blue-600 font-bold italic">
+                                                {settings.isProcessing 
+                                                  ? "Dispatching report..."
+                                                  : settings.nextRunDate 
+                                                  ? (new Date(settings.nextRunDate) <= new Date() 
+                                                     ? "Pending Immediate Dispatch" 
+                                                     : `${new Date(settings.nextRunDate).toLocaleString('en-IN', { 
+                                                       month: 'short', 
+                                                       day: 'numeric', 
+                                                       hour: 'numeric', 
+                                                       minute: '2-digit', 
+                                                       hour12: true 
+                                                     })} IST`)
+                                                  : (queue.length > 0 ? "Initial 5-min timer active..." : "Waiting for sitemaps...")}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <Button 
+                                        onClick={handleSendBatchNow}
+                                        disabled={sendingBatch || queue.length === 0 || settings.isProcessing}
+                                        variant={confirmSendBatch ? "destructive" : "outline"}
+                                        className={cn(
+                                            "w-full font-bold h-10 transition-all active:scale-95",
+                                            confirmSendBatch ? "bg-red-600 hover:bg-red-700 text-white border-transparent" : "border-zinc-200 hover:bg-zinc-50"
+                                        )}
+                                    >
+                                        {(sendingBatch || isProcessing) ? (
+                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        ) : confirmSendBatch ? (
+                                            <AlertCircle className="h-4 w-4 mr-2" />
+                                        ) : (
+                                            <Send className="h-4 w-4 mr-2" />
+                                        )}
+                                        {isProcessing ? "Processing Automated Report..." : confirmSendBatch ? "Confirm Dispatch?" : `Send Batch Now (${queue.length})`}
+                                    </Button>
+                                    {isProcessing && (
+                                        <div className="flex items-center justify-center gap-2 p-2 bg-blue-50 border border-blue-100 rounded-md">
+                                            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+                                            <span className="text-[10px] text-blue-700 font-medium italic">Automated dispatch is active. Please wait...</span>
+                                        </div>
+                                    )}
+                                    {queue.length === 0 && !isProcessing && (
+                                        <p className="text-[10px] text-zinc-400 text-center italic">Queue is currently empty</p>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                        </div>
+
+                        {/* Queue Table */}
+                        <div className="lg:col-span-2">
+                            <Card className="border-zinc-200 shadow-sm flex flex-col">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                                    <div>
+                                        <CardTitle className="text-lg flex items-center gap-2">
+                                            <ListTodo className="h-5 w-5 text-orange-500" />
+                                            Submission Queue
+                                        </CardTitle>
+                                        <CardDescription>Waitlist of sitemaps pending for the next report.</CardDescription>
+                                    </div>
+                                    <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 font-bold">
+                                        {queue.length} Pending
+                                    </Badge>
+                                </CardHeader>
+                                <CardContent className="flex-1 overflow-hidden">
+                                    <div className="rounded-lg border border-zinc-100 overflow-x-auto">
+                                        <table className="w-full text-sm min-w-[700px]">
+                                            <thead className="bg-zinc-50 border-b border-zinc-100">
+                                                <tr>
+                                                    <th className="py-3 px-4 text-left font-bold text-zinc-500 uppercase tracking-tighter text-[10px]">Sitemap URL</th>
+                                                    <th className="py-3 px-4 text-left font-bold text-zinc-500 uppercase tracking-tighter text-[10px]">Status</th>
+                                                    <th className="py-3 px-4 text-left font-bold text-zinc-500 uppercase tracking-tighter text-[10px]">Errors</th>
+                                                    <th className="py-3 px-4 text-left font-bold text-zinc-500 uppercase tracking-tighter text-[10px]">Submitted At</th>
+                                                    <th className="py-3 px-4 text-left font-bold text-zinc-500 uppercase tracking-tighter text-[10px]">User</th>
+                                                    <th className="py-3 px-4 text-center font-bold text-zinc-500 uppercase tracking-tighter text-[10px]">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-zinc-100">
+                                                {loadingQueue ? (
+                                                    <tr>
+                                                        <td colSpan="6" className="py-12 text-center text-zinc-400 font-medium">
+                                                            <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                                                            Fetching queue...
+                                                        </td>
+                                                    </tr>
+                                                ) : queue.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan="6" className="py-12 text-center text-zinc-400 font-medium">
+                                                            <History className="h-6 w-6 mx-auto mb-2 opacity-20" />
+                                                            No submissions currently in queue.
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    queue.map((item) => (
+                                                        <tr key={item._id} className="hover:bg-zinc-50/50 transition-colors">
+                                                            <td className="py-3 px-4 text-zinc-900 font-bold truncate max-w-[200px]">{item.sitemapUrl}</td>
+                                                            <td className="py-3 px-4">
+                                                                <span className={cn(
+                                                                    "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider",
+                                                                    item.healthStatus === "ACTIVE" ? "bg-emerald-100 text-emerald-700" : 
+                                                                    item.healthStatus === "ERROR" ? "bg-red-100 text-red-700" :
+                                                                    "bg-amber-100 text-amber-700"
+                                                                )}>
+                                                                    {item.healthStatus || 'QUEUED'}
+                                                                </span>
+                                                            </td>
+                                                            <td className={cn(
+                                                                "py-3 px-4 text-xs font-bold",
+                                                                item.errorCount > 0 ? "text-red-600" : "text-emerald-600"
+                                                            )}>
+                                                                {item.errorCount || 0}
+                                                            </td>
+                                                            <td className="py-3 px-4 text-zinc-500 text-xs">{new Date(item.submittedAt).toLocaleDateString()}</td>
+                                                            <td className="py-3 px-4 text-zinc-500 text-xs font-medium italic">{item.userEmail || 'System'}</td>
+                                                            <td className="py-3 px-4 text-center">
+                                                                <Button 
+                                                                    variant={confirmDeleteId === item._id ? "destructive" : "outline"}
+                                                                    size="sm"
+                                                                    onClick={() => handleRemoveFromQueue(item._id)}
+                                                                    disabled={deletingItems.has(item._id)}
+                                                                    className={cn(
+                                                                        "transition-all duration-200 font-bold uppercase text-[10px] h-7 px-3",
+                                                                        confirmDeleteId === item._id ? "bg-red-600 text-white border-red-600" : "text-red-500 border-red-200 hover:bg-red-50 hover:border-red-300"
+                                                                    )}
+                                                                >
+                                                                    {deletingItems.has(item._id) ? (
+                                                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                                                    ) : confirmDeleteId === item._id ? (
+                                                                        "Confirm?"
+                                                                    ) : (
+                                                                        <>
+                                                                            <Trash2 className="h-3 w-3 mr-1" />
+                                                                            Delete
+                                                                        </>
+                                                                    )}
+                                                                </Button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
+
+                    {/* Dispatch History (Full Width) */}
+                    <Card className="border-zinc-200 shadow-sm">
+                        <CardHeader className="pb-3 border-b border-zinc-50">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <History className="h-5 w-5 text-emerald-600" />
+                                    Dispatch History
+                                </CardTitle>
+                                <Badge variant="outline" className="text-[10px] font-bold text-zinc-400 bg-zinc-50">
+                                    Latest 20 activities
+                                </Badge>
+                            </div>
+                            <CardDescription>
+                                Track automated batch runs and manual consolidated report dispatches.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-6">
+                            {logs.length === 0 ? (
+                                <div className="py-12 text-center text-zinc-400 font-medium">
+                                    <History className="h-6 w-6 mx-auto mb-2 opacity-20" />
+                                    No logs recorded yet.
+                                </div>
+                            ) : (
+                                <div className="max-h-[600px] overflow-y-auto pr-2 space-y-3 scrollbar-thin scrollbar-thumb-zinc-200 scrollbar-track-transparent">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {logs.slice(0, 20).map((log, idx) => (
+                                            <div key={log._id || idx} className={cn(
+                                                "p-4 rounded-xl border transition-all duration-200 hover:shadow-md hover:border-zinc-300",
+                                                log.status === "SUCCESS" ? "bg-emerald-50/30 border-emerald-100/60" : 
+                                                log.status === "ERROR" ? "bg-red-50/30 border-red-100/60" :
+                                                "bg-zinc-50/50 border-zinc-100"
+                                            )}>
+                                                <div className="flex justify-between items-center mb-3">
+                                                    <span className={cn(
+                                                        "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider",
+                                                        log.status === "SUCCESS" ? "bg-emerald-100 text-emerald-700" : 
+                                                        log.status === "ERROR" ? "bg-red-100 text-red-700" : "bg-zinc-200 text-zinc-700"
+                                                    )}>
+                                                        {log.status}
+                                                    </span>
+                                                    <span className="text-zinc-500 font-bold text-[10px] flex items-center gap-1">
+                                                        <Clock3 className="h-3 w-3" />
+                                                        {new Date(log.timestamp).toLocaleString('en-IN', { 
+                                                            dateStyle: 'medium', 
+                                                            timeStyle: 'short' 
+                                                        })}
+                                                    </span>
+                                                </div>
+                                                <p className="text-zinc-800 text-xs font-semibold leading-relaxed break-words line-clamp-3 mb-3">
+                                                    {log.message}
+                                                </p>
+                                                {log.itemCount > 0 && (
+                                                    <div className="pt-3 border-t border-zinc-100/50 flex items-center justify-between">
+                                                        <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest">Payload Size</span>
+                                                        <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 font-black text-[9px] px-1.5 h-4">
+                                                            {log.itemCount} ITEMS
+                                                        </Badge>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {logs.length > 0 && logs.length >= 20 && (
+                                <div className="mt-6 flex items-center justify-center">
+                                    <div className="h-px flex-1 bg-zinc-100" />
+                                    <span className="px-4 text-[10px] text-zinc-400 font-bold uppercase tracking-widest italic">End of recent history</span>
+                                    <div className="h-px flex-1 bg-zinc-100" />
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </TabsContent>

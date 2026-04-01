@@ -15,6 +15,10 @@ const ServiceAccountSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    userEmail: {
+        type: String,
+        required: false, // Fallback to clientEmail or user.email if missing
+    },
     projectId: {
         type: String,
         required: true,

@@ -79,9 +79,15 @@ export async function POST(request) {
                     // Priority to 'siteOwner' if multiple accounts have access
                     const existing = permissionMap.get(normalized);
                     if (!existing || s.permissionLevel === "siteOwner") {
+                        // SMART RECIPIENT GUARD: Never use the GSC service account address as a notification recipient
+                        let bestEmail = acc.userEmail || acc.clientEmail;
+                        if (!bestEmail || bestEmail.includes("gserviceaccount.com")) {
+                            bestEmail = user.email; // Fallback to login email if no valid custom email is found
+                        }
+
                         permissionMap.set(normalized, {
                             permissionLevel: s.permissionLevel,
-                            accountEmail: acc.clientEmail
+                            accountEmail: bestEmail
                         });
                     }
                 });
