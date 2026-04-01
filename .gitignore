@@ -64,3 +64,8 @@ deploy.sh
 # Logs
 *.log
 logs/
+
+# Temp and test files
+/tmp
+
+/scripts

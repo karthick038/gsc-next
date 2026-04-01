@@ -8,6 +8,24 @@ import ServiceAccount from "@/models/ServiceAccount";
 import { performSitemapBatchDispatch } from "@/lib/mailer-v2";
 
 /**
+ * Calculates the Friday 6:00 PM IST (12:30 PM UTC) that is at least 14 days after the startDate.
+ */
+export function calculate14DayFridayWindow(startDate = new Date()) {
+    const target = new Date(startDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+    const day = target.getUTCDay();
+    const diff = (5 - day + 7) % 7;
+    
+    const friday = new Date(target);
+    friday.setUTCDate(target.getUTCDate() + diff);
+    friday.setUTCHours(12, 30, 0, 0);
+    
+    if (friday < target) {
+        friday.setUTCDate(friday.getUTCDate() + 7);
+    }
+    return friday;
+}
+
+/**
  * Triggers the dispatch of a sitemap batch report.
  * Can be called manually or automatically by the background worker.
  */
@@ -190,7 +208,7 @@ export async function sendBatchDispatch(adminEmail = null, skipLockCheck = false
             await Settings.findOneAndUpdate({}, {
                 $set: {
                     sitemapLastRunDate: new Date(),
-                    sitemapNextRunDate: null,
+                    sitemapNextRunDate: calculate14DayFridayWindow(new Date()),
                     sitemapIsProcessing: false
                 }
             });
@@ -296,18 +314,18 @@ export async function checkAndDispatchSitemapBatch(callerLabel = "UNKNOWN") {
     }
 
     // --- SELF-HEALING ---
-    // If items exist in the queue but no schedule is set, create a 5-minute timer.
+    // If items exist in the queue but no schedule is set, create the 14-day window.
     try {
         const settings = await Settings.findOne({});
         if (settings && !settings.sitemapNextRunDate && !settings.sitemapIsProcessing) {
             const queueCount = await SitemapBatchQueue.countDocuments({ status: "queued" });
             if (queueCount > 0) {
-                const nextRun = new Date(Date.now() + 5 * 60 * 1000);
+                const nextRun = calculate14DayFridayWindow(new Date());
                 await Settings.findOneAndUpdate({}, { $set: { sitemapNextRunDate: nextRun } });
-                console.log(`[LAZY-SCHEDULER] Self-healed: ${queueCount} orphaned items found. Next run: ${nextRun.toLocaleString()}`);
+                console.log(`[LAZY-SCHEDULER] Self-healed: ${queueCount} orphaned items found. Next run (14d Friday): ${nextRun.toLocaleString()}`);
                 await SitemapLog.create({
                     status: "INFO",
-                    message: `Self-heal: ${queueCount} queued items found without schedule. 5-min timer initialized.`,
+                    message: `Self-heal: ${queueCount} queued items found. Bi-weekly Friday schedule initialized.`,
                     itemCount: queueCount
                 });
             }

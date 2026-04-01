@@ -96,13 +96,14 @@ export async function POST(request) {
                 checkedAt: new Date()
             });
             
-            // --- REFINED: Ensure NextRun is set (Default 5 mins) ---
+            // --- REFINED: Ensure NextRun is set (14-day Friday window) ---
             // If already set, do nothing. If null, set it.
             let nextRun = settings?.sitemapNextRunDate;
              if (!nextRun) {
-                nextRun = new Date(Date.now() + 5 * 60 * 1000);
+                const { calculate14DayFridayWindow } = require("@/lib/sitemap-service");
+                nextRun = calculate14DayFridayWindow(new Date());
                 await Settings.findOneAndUpdate({}, { $set: { sitemapNextRunDate: nextRun } });
-                console.log(`[CRON SCHEDULED] First sitemap queued. 5-min timer set: ${nextRun.toLocaleString()}`);
+                console.log(`[CRON SCHEDULED] First sitemap queued. 14-day Friday schedule set: ${nextRun.toLocaleString()}`);
             } else {
                 console.log(`[CRON SCHEDULED] Item added to existing batch. Next run: ${nextRun.toLocaleString()}`);
             }
