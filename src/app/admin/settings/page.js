@@ -934,20 +934,19 @@ export default function AdminSettingsPage() {
                                                     <th className="py-3 px-4 text-left font-bold text-zinc-500 uppercase tracking-tighter text-[10px]">Errors</th>
                                                     <th className="py-3 px-4 text-left font-bold text-zinc-500 uppercase tracking-tighter text-[10px]">Submitted At</th>
                                                     <th className="py-3 px-4 text-left font-bold text-zinc-500 uppercase tracking-tighter text-[10px]">User</th>
-                                                    <th className="py-3 px-4 text-center font-bold text-zinc-500 uppercase tracking-tighter text-[10px]">Action</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-zinc-100">
                                                 {loadingQueue ? (
                                                     <tr>
-                                                        <td colSpan="6" className="py-12 text-center text-zinc-400 font-medium">
+                                                        <td colSpan="5" className="py-12 text-center text-zinc-400 font-medium">
                                                             <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
                                                             Fetching queue...
                                                         </td>
                                                     </tr>
                                                 ) : queue.length === 0 ? (
                                                     <tr>
-                                                        <td colSpan="6" className="py-12 text-center text-zinc-400 font-medium">
+                                                        <td colSpan="5" className="py-12 text-center text-zinc-400 font-medium">
                                                             <History className="h-6 w-6 mx-auto mb-2 opacity-20" />
                                                             No submissions currently in queue.
                                                         </td>
@@ -974,29 +973,6 @@ export default function AdminSettingsPage() {
                                                             </td>
                                                             <td className="py-3 px-4 text-zinc-500 text-xs">{new Date(item.submittedAt).toLocaleDateString()}</td>
                                                             <td className="py-3 px-4 text-zinc-500 text-xs font-medium italic">{item.userEmail || 'System'}</td>
-                                                            <td className="py-3 px-4 text-center">
-                                                                <Button 
-                                                                    variant={confirmDeleteId === item._id ? "destructive" : "outline"}
-                                                                    size="sm"
-                                                                    onClick={() => handleRemoveFromQueue(item._id)}
-                                                                    disabled={deletingItems.has(item._id)}
-                                                                    className={cn(
-                                                                        "transition-all duration-200 font-bold uppercase text-[10px] h-7 px-3",
-                                                                        confirmDeleteId === item._id ? "bg-red-600 text-white border-red-600" : "text-red-500 border-red-200 hover:bg-red-50 hover:border-red-300"
-                                                                    )}
-                                                                >
-                                                                    {deletingItems.has(item._id) ? (
-                                                                        <Loader2 className="h-3 w-3 animate-spin" />
-                                                                    ) : confirmDeleteId === item._id ? (
-                                                                        "Confirm?"
-                                                                    ) : (
-                                                                        <>
-                                                                            <Trash2 className="h-3 w-3 mr-1" />
-                                                                            Delete
-                                                                        </>
-                                                                    )}
-                                                                </Button>
-                                                            </td>
                                                         </tr>
                                                     ))
                                                 )}

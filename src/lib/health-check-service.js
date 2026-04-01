@@ -111,6 +111,7 @@ export async function performHealthCheck(feedpath) {
                 code: res.status,
                 description: `Sitemap returned HTTP ${res.status}`,
             });
+            summary.errorCount = errors.length;
             return { status: "ERROR", summary, errors };
         }
 
@@ -126,6 +127,7 @@ export async function performHealthCheck(feedpath) {
                 type: "Invalid XML",
                 description: "Sitemap does not appear to be a valid XML sitemap.",
             });
+            summary.errorCount = errors.length;
             return { status: "ERROR", summary, errors };
         }
 
@@ -146,6 +148,7 @@ export async function performHealthCheck(feedpath) {
                 type: "Empty Sitemap",
                 description: "No URLs found in the sitemap.",
             });
+            summary.errorCount = errors.length;
             return { status: "ERROR", summary, errors };
         }
 
@@ -164,8 +167,7 @@ export async function performHealthCheck(feedpath) {
         summary.redirectCount = scanResults.filter(r => r.category === "redirect").length;
 
         const scanErrors = scanResults.filter(r => r.category !== "ok");
-        summary.errorCount = scanErrors.length;
-
+        
         // Populate error details for the email/log
         scanErrors.forEach(err => {
             // Build a meaningful description instead of "Unknown error"
@@ -197,6 +199,9 @@ export async function performHealthCheck(feedpath) {
             });
         });
 
+        // Final summary sync
+        summary.errorCount = errors.length;
+
         // Final decision — critical issues if sitemap itself failed or major errors found
         // User said: "If any URL returns 4xx / 5xx ... Mark sitemap as Error"
         const hasCriticalErrors = summary.errorCount > 0;
@@ -208,14 +213,17 @@ export async function performHealthCheck(feedpath) {
         };
 
     } catch (err) {
+        errors.push({
+            url: feedpath,
+            type: "System Error",
+            description: err.message,
+        });
+        summary.errorCount = errors.length;
+        
         return {
             status: "ERROR",
             summary: { ...summary, accessible: false },
-            errors: [{
-                url: feedpath,
-                type: "System Error",
-                description: err.message,
-            }],
+            errors,
         };
     }
 }
