@@ -316,6 +316,13 @@ async function sendEmailViaBrevo({
                             <p style="margin: 8px 0 0; color: #15803d; font-size: 14px; font-weight: 500; opacity: 0.8;">No issues were detected during this scan.</p>
                         </div>
                     `}
+                    
+                    <div style="margin-top: 35px; padding: 20px; background-color: #f8fafc; border-radius: 12px; border: 1px solid #f1f5f9;">
+                         <p style="margin: 0; font-size: 12px; color: #64748b; line-height: 1.6;">
+                            <strong>Performance:</strong> Sitemap response time was ${summary.responseTimeMs || 0}ms. <br/>
+                            <span style="font-size: 11px; opacity: 0.7;">This report is automated. For any questions, contact <a href="mailto:${senderEmail}" style="color: ${accentColor}; text-decoration: none; font-weight: 700;">${senderEmail}</a></span>
+                         </p>
+                    </div>
                 </div>
 
                 <!-- Footer -->
@@ -524,6 +531,15 @@ export async function performSitemapBatchDispatch({ to, submissions }) {
                     <p style="margin: 0; font-size: 12px; color: #94a3b8; font-weight: 600; letter-spacing: 0.02em;">
                         This consolidated report was generated via ${senderName} automation layer.
                     </p>
+                     ${submissions.length > 0 ? `
+                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #f1f5f9; text-align: center;">
+                            <span style="font-size: 11px; color: #cbd5e1; font-weight: 500;">
+                                Average Sitemap Latency: <strong>${Math.round(submissions.reduce((acc, s) => acc + (s.responseTimeMs || 0), 0) / submissions.length)}ms</strong> 
+                                · Total Nodes Scanned: ${submissions.reduce((acc, s) => acc + (s.totalUrls || 0), 0)}
+                            </span>
+                        </div>
+                    ` : ''}
+                </div>
                 </div>
             </div>
         </div>
@@ -577,8 +593,9 @@ export async function performSitemapBatchDispatch({ to, submissions }) {
                 html_content: htmlContent, 
                 overall_status: totalErrors > 0 ? "FAILED" : "PASSED",
                 overall_status_label: totalErrors > 0 ? "❌ Issues Found" : "✅ All Clear",
-                // CORRECTED: FLAT 4-COLUMN ROWS FOR USER'S EMAILJS TEMPLATE
+                // ALIGNED 4-COLUMN ROWS FOR USER'S EMAILJS TEMPLATE
                 error_rows: emailJS_error_rows || "<tr><td colspan='4' style='padding:15px; text-align:center; color:#999;'>No issues detected across all sitemaps.</td></tr>",
+                response_time: submissions.length > 0 ? Math.round(submissions.reduce((acc, s) => acc + (s.responseTimeMs || 0), 0) / submissions.length) : 0,
                 support_email: senderEmail,
                 active_provider: "EmailJS (Batch)"
             }

@@ -90,6 +90,7 @@ export async function POST(request) {
                 status: "queued",
                 healthStatus: queueHealthStatus,
                 errorCount: result.summary.errorCount || 0,
+                responseTimeMs: result.summary.responseTimeMs || 0,
                 errorLogs: result.errors || [],
                 submittedAt: new Date(),
                 checkedAt: new Date()
