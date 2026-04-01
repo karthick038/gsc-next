@@ -93,7 +93,7 @@ export default function AdminSettingsPage() {
         const fetchSitemapData = async () => {
             const isActive = isProcessing || settings.isProcessing;
             const startTime = Date.now();
-            
+
             try {
                 // 1. Fetch Queue
                 const queueRes = await fetch("/api/admin/sitemap/queue");
@@ -279,9 +279,9 @@ export default function AdminSettingsPage() {
 
             if (res.ok) {
                 const sentTime = data.sentAt ? new Date(data.sentAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : new Date().toLocaleString();
-                setMessage({ 
-                    type: "success", 
-                    text: `Consolidated report sent successfully! Dispatch confirmed on ${sentTime}.` 
+                setMessage({
+                    type: "success",
+                    text: `Consolidated report sent successfully! Dispatch confirmed on ${sentTime}.`
                 });
                 setQueue([]); // Clear queue locally
                 setSettings(prev => ({ ...prev, sitemapLastRunDate: new Date() }));
@@ -827,7 +827,7 @@ export default function AdminSettingsPage() {
                                             <Calendar className="h-5 w-5 text-emerald-600" />
                                             Scheduler
                                         </CardTitle>
-                                        <div 
+                                        <div
                                             className={cn(
                                                 "w-12 h-6 rounded-full p-1 cursor-pointer transition-colors duration-200",
                                                 settings.sitemapBatchingEnabled ? "bg-emerald-500" : "bg-zinc-300"
@@ -861,23 +861,23 @@ export default function AdminSettingsPage() {
                                                 <Clock3 className="h-3 w-3" /> Next Run
                                             </span>
                                             <span className="text-blue-600 font-bold italic">
-                                                {settings.isProcessing 
-                                                  ? "Dispatching report..."
-                                                  : settings.nextRunDate 
-                                                  ? (new Date(settings.nextRunDate) <= new Date() 
-                                                     ? "Pending Immediate Dispatch" 
-                                                     : `${new Date(settings.nextRunDate).toLocaleString('en-IN', { 
-                                                       month: 'short', 
-                                                       day: 'numeric', 
-                                                       hour: 'numeric', 
-                                                       minute: '2-digit', 
-                                                       hour12: true 
-                                                     })} IST`)
-                                                  : (queue.length > 0 ? "Waiting for 14-day Friday window..." : "Waiting for sitemaps...")}
+                                                {settings.isProcessing
+                                                    ? "Dispatching report..."
+                                                    : settings.nextRunDate
+                                                        ? (new Date(settings.nextRunDate) <= new Date()
+                                                            ? "Pending Immediate Dispatch"
+                                                            : `${new Date(settings.nextRunDate).toLocaleString('en-IN', {
+                                                                month: 'short',
+                                                                day: 'numeric',
+                                                                hour: 'numeric',
+                                                                minute: '2-digit',
+                                                                hour12: true
+                                                            })} IST`)
+                                                        : (queue.length > 0 ? "Waiting for 14-day Friday window..." : "Waiting for sitemaps...")}
                                             </span>
                                         </div>
                                     </div>
-                                    <Button 
+                                    <Button
                                         onClick={handleSendBatchNow}
                                         disabled={sendingBatch || queue.length === 0 || settings.isProcessing}
                                         variant={confirmSendBatch ? "destructive" : "outline"}
@@ -916,7 +916,7 @@ export default function AdminSettingsPage() {
                                     <div>
                                         <CardTitle className="text-lg flex items-center gap-2">
                                             <ListTodo className="h-5 w-5 text-orange-500" />
-                                            Submission Queue
+                                            Sitemap Email Dispatch Queue
                                         </CardTitle>
                                         <CardDescription>Waitlist of sitemaps pending for the next report.</CardDescription>
                                     </div>
@@ -958,9 +958,9 @@ export default function AdminSettingsPage() {
                                                             <td className="py-3 px-4">
                                                                 <span className={cn(
                                                                     "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider",
-                                                                    item.healthStatus === "ACTIVE" ? "bg-emerald-100 text-emerald-700" : 
-                                                                    item.healthStatus === "ERROR" ? "bg-red-100 text-red-700" :
-                                                                    "bg-amber-100 text-amber-700"
+                                                                    item.healthStatus === "ACTIVE" ? "bg-emerald-100 text-emerald-700" :
+                                                                        item.healthStatus === "ERROR" ? "bg-red-100 text-red-700" :
+                                                                            "bg-amber-100 text-amber-700"
                                                                 )}>
                                                                     {item.healthStatus || 'QUEUED'}
                                                                 </span>
@@ -1012,23 +1012,23 @@ export default function AdminSettingsPage() {
                                         {logs.slice(0, 20).map((log, idx) => (
                                             <div key={log._id || idx} className={cn(
                                                 "p-4 rounded-xl border transition-all duration-200 hover:shadow-md hover:border-zinc-300",
-                                                log.status === "SUCCESS" ? "bg-emerald-50/30 border-emerald-100/60" : 
-                                                log.status === "ERROR" ? "bg-red-50/30 border-red-100/60" :
-                                                "bg-zinc-50/50 border-zinc-100"
+                                                log.status === "SUCCESS" ? "bg-emerald-50/30 border-emerald-100/60" :
+                                                    log.status === "ERROR" ? "bg-red-50/30 border-red-100/60" :
+                                                        "bg-zinc-50/50 border-zinc-100"
                                             )}>
                                                 <div className="flex justify-between items-center mb-3">
                                                     <span className={cn(
                                                         "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider",
-                                                        log.status === "SUCCESS" ? "bg-emerald-100 text-emerald-700" : 
-                                                        log.status === "ERROR" ? "bg-red-100 text-red-700" : "bg-zinc-200 text-zinc-700"
+                                                        log.status === "SUCCESS" ? "bg-emerald-100 text-emerald-700" :
+                                                            log.status === "ERROR" ? "bg-red-100 text-red-700" : "bg-zinc-200 text-zinc-700"
                                                     )}>
                                                         {log.status}
                                                     </span>
                                                     <span className="text-zinc-500 font-bold text-[10px] flex items-center gap-1">
                                                         <Clock3 className="h-3 w-3" />
-                                                        {new Date(log.timestamp).toLocaleString('en-IN', { 
-                                                            dateStyle: 'medium', 
-                                                            timeStyle: 'short' 
+                                                        {new Date(log.timestamp).toLocaleString('en-IN', {
+                                                            dateStyle: 'medium',
+                                                            timeStyle: 'short'
                                                         })}
                                                     </span>
                                                 </div>

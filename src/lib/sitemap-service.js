@@ -205,10 +205,13 @@ export async function sendBatchDispatch(adminEmail = null, skipLockCheck = false
                 { $set: { status: "sent" } }
             );
 
+            // Only reschedule if there are still items in the queue (e.g. failures or new additions)
+            const remainingCount = await SitemapBatchQueue.countDocuments({ status: "queued" });
+            
             await Settings.findOneAndUpdate({}, {
                 $set: {
                     sitemapLastRunDate: new Date(),
-                    sitemapNextRunDate: calculate14DayFridayWindow(new Date()),
+                    sitemapNextRunDate: remainingCount > 0 ? calculate14DayFridayWindow(new Date()) : null,
                     sitemapIsProcessing: false
                 }
             });
