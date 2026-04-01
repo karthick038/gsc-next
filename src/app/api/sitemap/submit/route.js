@@ -6,6 +6,7 @@ import { google } from "googleapis";
 import { decrypt } from "@/lib/encryption";
 import Sitemap from "@/models/Sitemap";
 import User from "@/models/User";
+import Settings from "@/models/Settings";
 
 export const dynamic = "force-dynamic";
 
@@ -148,9 +149,14 @@ export async function POST(request) {
                     }),
                 }).catch(err => console.error("Background task trigger failed:", err));
 
+                const settings = await Settings.findOne({});
+                const batchingEnabled = settings?.sitemapBatchingEnabled ?? false;
+
                 return NextResponse.json({
                     success: true,
-                    message: `Sitemap submitted successfully. Sitemap reports send to ${recipientEmail || acc.clientEmail}`,
+                    message: batchingEnabled 
+                        ? `Your sitemap has been submitted successfully. You’ll see its report in the next scheduled update.`
+                        : `Sitemap submitted successfully. Sitemap report sent to ${recipientEmail || acc.clientEmail}`,
                 });
 
             } catch (err) {

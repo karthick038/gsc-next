@@ -4,8 +4,10 @@ import Sitemap from "@/models/Sitemap";
 import HealthCheckLog from "@/models/HealthCheckLog";
 import ServiceAccount from "@/models/ServiceAccount";
 import User from "@/models/User";
+import Settings from "@/models/Settings";
+import SitemapBatchQueue from "@/models/SitemapBatchQueue";
 import { performHealthCheck } from "@/lib/health-check-service";
-import { sendHealthCheckEmail } from "@/lib/mailer";
+import { sendHealthCheckEmail } from "@/lib/mailer-v2";
 
 /**
  * Background worker task for running sitemap health checks
@@ -69,9 +71,45 @@ export async function POST(request) {
         }
 
         let emailResponse = null;
-        if (recipientEmail) {
+        
+        // --- NEW: Check if Batching is enabled ---
+        const settings = await Settings.findOne({});
+        const batchingEnabled = settings?.sitemapBatchingEnabled ?? false;
+
+        if (batchingEnabled && recipientEmail) {
+            console.log(`[HEALTH-CHECK] Batching enabled. Queueing report for: ${sitemap.feedpath}`);
+            
+            // Derive health status strictly: any URL errors = ERROR, regardless of mapping
+            const queueHealthStatus = (result.status === "ERROR" || (result.summary.errorCount > 0))
+                ? "ERROR"
+                : "SUCCESS";
+
+            await SitemapBatchQueue.create({
+                sitemapUrl: sitemap.feedpath,
+                userEmail: recipientEmail,
+                status: "queued",
+                healthStatus: queueHealthStatus,
+                errorCount: result.summary.errorCount || 0,
+                errorLogs: result.errors || [],
+                submittedAt: new Date(),
+                checkedAt: new Date()
+            });
+            
+            // --- REFINED: Ensure NextRun is set (Default 5 mins) ---
+            // If already set, do nothing. If null, set it.
+            let nextRun = settings?.sitemapNextRunDate;
+             if (!nextRun) {
+                nextRun = new Date(Date.now() + 5 * 60 * 1000);
+                await Settings.findOneAndUpdate({}, { $set: { sitemapNextRunDate: nextRun } });
+                console.log(`[CRON SCHEDULED] First sitemap queued. 5-min timer set: ${nextRun.toLocaleString()}`);
+            } else {
+                console.log(`[CRON SCHEDULED] Item added to existing batch. Next run: ${nextRun.toLocaleString()}`);
+            }
+
+            emailResponse = { status: "QUEUED", message: "Batching enabled, item added to queue." };
+        } else if (recipientEmail) {
             const recipients = recipientEmail.split(",").map(r => r.trim()).filter(r => r);
-            console.log(`[HEALTH-CHECK] Triggering email report to ${recipients.length} recipients for sitemap: ${sitemap.feedpath} (status: ${result.status})`);
+            console.log(`[HEALTH-CHECK] Triggering immediate email report to ${recipients.length} recipients for sitemap: ${sitemap.feedpath} (status: ${result.status})`);
 
             const emailResults = await Promise.all(recipients.map(async (to) => {
                 try {

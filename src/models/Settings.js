@@ -55,6 +55,26 @@ const SettingsSchema = new mongoose.Schema(
             type: String,
             default: "",
         },
+        sitemapBatchingEnabled: {
+            type: Boolean,
+            default: true,
+        },
+        sitemapLastRunDate: {
+            type: Date,
+            default: null,
+        },
+        notificationEmail: {
+            type: String,
+            default: "",
+        },
+        sitemapIsProcessing: {
+            type: Boolean,
+            default: false,
+        },
+        sitemapNextRunDate: {
+            type: Date,
+            default: null,
+        },
     },
     {
         timestamps: true,

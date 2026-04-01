@@ -253,3 +253,151 @@ async function sendEmailViaBrevo({
         return { success: false, error: err.message };
     }
 }
+
+export async function performSitemapBatchDispatch({ to, submissions }) {
+    const settings = await getEmailSettings();
+    const provider = settings?.emailProvider || "EmailJS";
+    const senderName = settings?.siteTitle || APP_NAME;
+    const senderEmail = settings?.senderEmail || "support@colorwhistle.com";
+
+    // Extract and format sitemap URLs for display
+    const sitemapUrls = submissions.map(s => s.sitemapUrl);
+    const maxUrlsToDisplay = 100; // Increased to 100 as per user request to show all URLs
+    const displayedUrls = sitemapUrls.slice(0, maxUrlsToDisplay).join(", ");
+    const combinedUrlsLabel = sitemapUrls.length > maxUrlsToDisplay 
+        ? `${displayedUrls} and ${sitemapUrls.length - maxUrlsToDisplay} others`
+        : displayedUrls;
+
+    const checkDate = new Date().toLocaleString();
+
+    const sitemapSummaryTableRows = submissions.map(s => {
+        const errorRows = (s.errorLogs || []).slice(0, 5).map(err => `
+            <div style="margin-top: 4px; padding: 6px 10px; background-color: #fffaf0; border-left: 2px solid #ed8936; font-size: 11px; color: #744210;">
+                <strong style="color: #c05621;">${err.type}:</strong> ${err.url} 
+                <div style="font-size: 10px; opacity: 0.8; margin-top: 2px;">${err.description || ''}</div>
+            </div>
+        `).join('');
+
+        return `
+            <tr>
+                <td style="padding: 12px; border-bottom: 1px solid #f3f4f6; font-size: 13px; color: #111827; font-weight: 700; word-break: break-all; vertical-align: top;">
+                    ${s.sitemapUrl}
+                    ${errorRows ? `<div style="margin-top: 8px;">${errorRows}</div>` : ''}
+                </td>
+                <td style="padding: 12px; border-bottom: 1px solid #f3f4f6; vertical-align: top;">
+                    <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.025em; background-color: ${s.healthStatus === 'ERROR' ? '#fee2e2' : '#f0fff4'}; color: ${s.healthStatus === 'ERROR' ? '#991b1b' : '#166534'};">
+                        ${s.healthStatus || 'QUEUED'}
+                    </span>
+                </td>
+                <td style="padding: 12px; border-bottom: 1px solid #f3f4f6; font-size: 13px; font-weight: 800; color: ${s.errorCount > 0 ? '#dc2626' : '#10b981'}; vertical-align: top;">${s.errorCount || 0}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #f3f4f6; font-size: 12px; color: #6b7280; vertical-align: top;">${new Date(s.submittedAt).toLocaleDateString()}</td>
+            </tr>
+        `;
+    }).join('');
+
+    const htmlContent = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px 20px; background-color: #f9fafb;">
+            <div style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); border: 1px solid #e5e7eb;">
+                <div style="padding: 30px; border-bottom: 1px solid #e5e7eb; background-color: #ffffff;">
+                    <h2 style="margin: 0; color: #111827; font-size: 20px; font-weight: 800; letter-spacing: -0.025em;">Consolidated Sitemap Report</h2>
+                    <p style="margin: 8px 0 0; font-size: 14px; color: #6b7280;">Batched report for <strong>${submissions.length}</strong> sitemap submission(s).</p>
+                </div>
+                <div style="padding: 20px; overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; min-width: 600px;">
+                        <thead>
+                            <tr style="background-color: #f9fafb;">
+                                <th style="padding: 12px; text-align: left; font-size: 10px; font-weight: 800; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.05em; border-bottom: 1px solid #e5e7eb;">Sitemap & Details</th>
+                                <th style="padding: 12px; text-align: left; font-size: 10px; font-weight: 800; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.05em; border-bottom: 1px solid #e5e7eb; width: 100px;">Status</th>
+                                <th style="padding: 12px; text-align: left; font-size: 10px; font-weight: 800; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.05em; border-bottom: 1px solid #e5e7eb; width: 80px;">Errors</th>
+                                <th style="padding: 12px; text-align: left; font-size: 10px; font-weight: 800; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.05em; border-bottom: 1px solid #e5e7eb; width: 100px;">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${sitemapSummaryTableRows}
+                        </tbody>
+                    </table>
+                </div>
+                <div style="padding: 20px 30px; background-color: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center;">
+                    <p style="margin: 0; font-size: 12px; color: #9ca3af; font-weight: 500;">
+                        Total Items in Batch: <strong>${submissions.length}</strong> · Generated on ${checkDate}
+                    </p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    if (provider === "Brevo") {
+        const apiKey = settings?.brevoApiKey;
+        if (!apiKey) return { success: false, error: "Brevo API Key missing" };
+
+        const payload = {
+            sender: { name: senderName, email: senderEmail },
+            to: [{ email: to }],
+            subject: `Sitemap Batch Report (${submissions.length} items)`,
+            htmlContent: htmlContent
+        };
+
+        const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "api-key": apiKey },
+            body: JSON.stringify(payload)
+        });
+
+        return response.ok ? { success: true } : { success: false, error: "Brevo API failed" };
+    } else {
+        // EmailJS Implementation for Batching
+        const serviceId = settings?.emailjsServiceId;
+        const templateId = settings?.emailjsTemplateIdSuccess || settings?.emailjsTemplateId;
+        const publicKey = settings?.emailjsPublicKey;
+        const privateKey = settings?.emailjsPrivateKey;
+
+        if (!serviceId || !templateId || !publicKey) {
+            return { success: false, error: "EmailJS configuration incomplete" };
+        }
+
+        const payload = {
+            service_id: serviceId,
+            template_id: templateId,
+            user_id: publicKey,
+            accessToken: privateKey,
+            template_params: {
+                to_email: to,
+                from_name: senderName,
+                reply_to: senderEmail,
+                company_name: senderName,
+                sitemap_url: combinedUrlsLabel,
+                checked_time: checkDate,
+                total_urls: submissions.length,
+                total_errors: submissions.filter(s => s.healthStatus === "ERROR").length,
+                error_rows: `
+                    <div style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                        <table style="width: 100%; border-collapse: collapse; font-family: sans-serif;">
+                            <tr style="background-color: #f9fafb;">
+                                <th style="padding: 10px; text-align: left; font-size: 10px; border-bottom: 1px solid #e5e7eb;">Sitemap & Details</th>
+                                <th style="padding: 10px; text-align: left; font-size: 10px; border-bottom: 1px solid #e5e7eb; width: 80px;">Status</th>
+                                <th style="padding: 10px; text-align: left; font-size: 10px; border-bottom: 1px solid #e5e7eb; width: 60px;">Errors</th>
+                                <th style="padding: 10px; text-align: left; font-size: 10px; border-bottom: 1px solid #e5e7eb; width: 80px;">Date</th>
+                            </tr>
+                            ${sitemapSummaryTableRows}
+                        </table>
+                    </div>
+                `,
+                support_email: senderEmail,
+                active_provider: "EmailJS (Batch)"
+            }
+        };
+
+        const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            return { success: false, error: `EmailJS API Error: ${response.status}`, rawResponse: errorText };
+        }
+
+        return { success: true };
+    }
+}

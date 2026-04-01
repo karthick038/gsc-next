@@ -34,6 +34,7 @@ export async function GET(request) {
         id: acc._id,
         filename: acc.filename,
         clientEmail: acc.clientEmail,
+        userEmail: acc.userEmail || acc.clientEmail, // Fallback for old records
         projectId: acc.projectId,
         isValid: acc.isValid,
         createdAt: acc.createdAt
@@ -100,9 +101,15 @@ export async function DELETE(request) {
             const existing = permissionMap.get(normalized);
             // siteOwner has priority
             if (!existing || s.permissionLevel === "siteOwner") {
+              // SMART RECIPIENT GUARD
+              let bestEmail = acc.userEmail || acc.clientEmail;
+              if (!bestEmail || bestEmail.includes("gserviceaccount.com")) {
+                  bestEmail = user.email;
+              }
+
               permissionMap.set(normalized, {
                 permissionLevel: s.permissionLevel,
-                accountEmail: acc.clientEmail
+                accountEmail: bestEmail
               });
             }
           });
@@ -121,7 +128,7 @@ export async function DELETE(request) {
           const normalizedGSite = gSite.replace(/^sc-domain:/, "").replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
           if (normalizedGSite === normalizedUserUrl) {
             site.permissionLevel = data.permissionLevel; // Update permission level
-            site.accountEmail = data.accountEmail; // Update account email
+            site.accountEmail = data.accountEmail; // Updated via test-connection re-validation
             hasAccess = true;
             break;
           }
@@ -210,7 +217,8 @@ export async function POST(request) {
         const newAccount = await ServiceAccount.create({
           userId,
           filename: file.name,
-          clientEmail: customEmail || client_email,
+          clientEmail: client_email, // ALWAYS the Google address for API
+          userEmail: customEmail || (await User.findById(userId))?.email || client_email, // User preference
           projectId: project_id,
           encryptedJson,
           isValid: true

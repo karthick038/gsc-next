@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import Settings from "@/models/Settings";
 import { auth } from "@/auth";
+import { checkAndDispatchSitemapBatch } from "@/lib/sitemap-service";
 
 export async function GET() {
     try {
@@ -14,7 +15,22 @@ export async function GET() {
                 faviconUrl: "/favicon.ico"
             });
         }
-        return NextResponse.json(settings);
+
+        // --- PASSIVE SAFETY NET ---
+        // If overdue and not currently processing, nudge the background dispatcher.
+        // This is fire-and-forget — the background worker owns the mutex.
+        if (settings.sitemapNextRunDate && new Date(settings.sitemapNextRunDate) < new Date() && !settings.sitemapIsProcessing) {
+            checkAndDispatchSitemapBatch("SETTINGS-API-NUDGE").catch(err =>
+                console.error("[SETTINGS-API] Background dispatch nudge error:", err.message)
+            );
+        }
+
+        const settingsObj = settings.toObject();
+        // Return the exact next run date as stored in the database
+        settingsObj.nextRunDate = settings.sitemapNextRunDate;
+        settingsObj.isProcessing = settings.sitemapIsProcessing;
+
+        return NextResponse.json(settingsObj);
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -35,7 +51,9 @@ export async function PATCH(request) {
             emailProvider, brevoApiKey,
             senderEmail,
             emailjsServiceId, emailjsTemplateId, emailjsTemplateIdSuccess, emailjsTemplateIdFailed,
-            emailjsPublicKey, emailjsPrivateKey
+            emailjsPublicKey, emailjsPrivateKey,
+            sitemapBatchingEnabled, sitemapLastRunDate,
+            notificationEmail
         } = body;
 
         await connectDB();
@@ -46,7 +64,9 @@ export async function PATCH(request) {
                 emailProvider, brevoApiKey,
                 senderEmail,
                 emailjsServiceId, emailjsTemplateId, emailjsTemplateIdSuccess, emailjsTemplateIdFailed,
-                emailjsPublicKey, emailjsPrivateKey
+                emailjsPublicKey, emailjsPrivateKey,
+                sitemapBatchingEnabled, sitemapLastRunDate,
+                notificationEmail
             },
             { upsert: true, new: true }
         );
