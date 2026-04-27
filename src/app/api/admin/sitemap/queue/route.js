@@ -56,9 +56,13 @@ export async function DELETE() {
         await connectDB();
         const result = await SitemapBatchQueue.deleteMany({ status: "queued" });
 
-        // Clear the schedule too so the Next Run resets
+        // Clear the reporting schedule too so the Next Run resets
         await Settings.findOneAndUpdate({}, {
-            $set: { sitemapNextRunDate: null, sitemapIsProcessing: false }
+            $set: { 
+                reportingNextRunDate: null, 
+                reportingIsProcessing: false,
+                reportingPostAutomationRunDate: null 
+            }
         });
 
         console.log("Sitemap queue clear results:", result);

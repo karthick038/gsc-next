@@ -75,6 +75,52 @@ const SettingsSchema = new mongoose.Schema(
             type: Date,
             default: null,
         },
+        sitemapIntervalDays: {
+            type: Number,
+            default: 14,
+        },
+        sitemapStartDateTime: {
+            type: Date,
+            default: null,
+        },
+        sitemapInterval: {
+            type: String,
+            default: "14_DAYS",
+        },
+        sitemapReferenceTime: {
+            type: String,
+            default: "00:00",
+        },
+        // --- NEW REPORTING ENGINE FIELDS ---
+        reportingEnabled: {
+            type: Boolean,
+            default: true,
+        },
+        reportingInterval: {
+            type: String,
+            default: "14_DAYS",
+        },
+        reportingReferenceTime: {
+            type: String,
+            default: "00:00",
+        },
+        reportingLastRunDate: {
+            type: Date,
+            default: null,
+        },
+        reportingNextRunDate: {
+            type: Date,
+            default: null,
+        },
+        reportingIsProcessing: {
+            type: Boolean,
+            default: false,
+        },
+        // Separate post-automation trigger — does NOT affect the user's configured schedule
+        reportingPostAutomationRunDate: {
+            type: Date,
+            default: null,
+        },
     },
     {
         timestamps: true,

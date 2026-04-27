@@ -11,6 +11,12 @@ const SitemapLogSchema = new mongoose.Schema(
             enum: ["INFO", "SUCCESS", "ERROR"],
             required: true,
         },
+        // "sitemap" = Sitemap Automation logs, "reporting" = Reporting Scheduler logs, "system" = Guard/system-level logs
+        logCategory: {
+            type: String,
+            enum: ["sitemap", "reporting", "system"],
+            default: "sitemap",
+        },
         message: {
             type: String,
             required: true,
@@ -23,6 +29,13 @@ const SitemapLogSchema = new mongoose.Schema(
             type: String,
             default: "",
         },
+        items: [{
+            siteUrl: String,
+            sitemapUrl: String,
+            healthStatus: String, // "SUCCESS" or "ERROR"
+            errorCount: Number,
+            message: String
+        }],
     },
     {
         timestamps: true,

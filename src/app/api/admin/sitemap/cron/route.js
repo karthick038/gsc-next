@@ -17,84 +17,34 @@ export async function POST(request) {
         }
 
         await connectDB();
+        const { executeUniversalResubmission, checkAndDispatchSitemapBatch } = require("@/lib/sitemap-service");
 
-        const settings = await Settings.findOne({});
+        console.log("[CRON] 🕒 Heartbeat detected. Checking independent schedules...");
 
-        if (!settings?.sitemapBatchingEnabled) {
-            return NextResponse.json({ skipped: true, reason: "Batching disabled" });
-        }
+        // 1. Trigger Sitemap Engine (if due)
+        // executeUniversalResubmission handles its own internal locks/checks via sitemap* fields
+        const sitemapPromise = executeUniversalResubmission("CRON-WORKER");
 
-        // --- STALE LOCK RECOVERY ---
-        if (settings.sitemapIsProcessing && settings.sitemapNextRunDate) {
-            const twoMinsPast = new Date(settings.sitemapNextRunDate.getTime() + 2 * 60 * 1000);
-            if (new Date() > twoMinsPast) {
-                console.log("[CRON] Stale lock detected. Force-releasing...");
-                await Settings.findOneAndUpdate({}, { $set: { sitemapIsProcessing: false } });
-                await SitemapLog.create({ status: "INFO", message: "Stale processing lock force-released by cron." });
+        // 2. Trigger Reporting Engine (if due) 
+        // checkAndDispatchSitemapBatch now handles reporting* fields internally
+        const reportingPromise = checkAndDispatchSitemapBatch("CRON-WORKER");
+
+        const [sitemapResult, reportingResult] = await Promise.all([
+            sitemapPromise,
+            reportingPromise
+        ]);
+
+        return NextResponse.json({
+            success: true,
+            timestamp: new Date().toISOString(),
+            engines: {
+                sitemap: sitemapResult || { status: "Idle/Skipped" },
+                reporting: reportingResult || { status: "Idle/Skipped" }
             }
-        }
-
-        // --- CHECK IF DISPATCH IS DUE ---
-        const freshSettings = await Settings.findOne({});
-        if (!freshSettings?.sitemapNextRunDate) {
-            return NextResponse.json({ skipped: true, reason: "No schedule set" });
-        }
-        if (freshSettings.sitemapIsProcessing) {
-            return NextResponse.json({ skipped: true, reason: "Already processing" });
-        }
-        if (new Date() < new Date(freshSettings.sitemapNextRunDate)) {
-            const secsRemaining = Math.round((new Date(freshSettings.sitemapNextRunDate) - new Date()) / 1000);
-            return NextResponse.json({ skipped: true, reason: `Not due yet (${secsRemaining}s remaining)` });
-        }
-
-        // --- ATOMIC LOCK ACQUISITION ---
-        const lockResult = await Settings.findOneAndUpdate(
-            {
-                sitemapBatchingEnabled: true,
-                sitemapIsProcessing: false,
-                sitemapNextRunDate: { $lte: new Date(), $ne: null }
-            },
-            { $set: { sitemapIsProcessing: true } },
-            { new: true }
-        );
-
-        if (!lockResult) {
-            return NextResponse.json({ skipped: true, reason: "Lock not acquired (race condition)" });
-        }
-
-        console.log("[CRON] ✓ Lock acquired. Starting batch dispatch...");
-
-        const recipientEmail = lockResult.notificationEmail || lockResult.senderEmail;
-        const { sendBatchDispatch } = require("@/lib/sitemap-service");
-        
-        try {
-            // We pass the lockResult's notificationEmail as a fallback adminEmail
-            const result = await sendBatchDispatch(recipientEmail, true);
-
-            if (!result.success) {
-                return NextResponse.json({ success: false, error: result.error });
-            }
-
-            return NextResponse.json({ success: true, summary: result.summary, sentAt: result.sentAt });
-
-        } finally {
-            // Always release the lock
-            await Settings.findOneAndUpdate(
-                { sitemapIsProcessing: true },
-                { $set: { sitemapIsProcessing: false } }
-            );
-        }
+        });
 
     } catch (error) {
         console.error("[CRON] Fatal error:", error.message);
-        // Emergency lock release
-        try {
-            await connectDB();
-            await Settings.findOneAndUpdate(
-                { sitemapIsProcessing: true },
-                { $set: { sitemapIsProcessing: false } }
-            );
-        } catch (_) {}
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
