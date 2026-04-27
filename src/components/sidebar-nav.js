@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, KeyRound, Radio, History as HistoryIcon, Users, Settings as SettingsIcon, Map } from "lucide-react";
+import { LayoutDashboard, KeyRound, Radio, History as HistoryIcon, Users, Settings as SettingsIcon, Map, Calendar } from "lucide-react";
 
 const USER_LINKS = [
     { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
@@ -16,6 +16,7 @@ const USER_LINKS = [
 const ADMIN_LINKS = [
     ...USER_LINKS,
     { href: "/admin/dashboard", label: "User Management", icon: Users },
+    { href: "/admin/sitemap-scheduler", label: "Sitemap Automation", icon: Calendar },
     { href: "/admin/settings", label: "Settings", icon: SettingsIcon },
 ];
 

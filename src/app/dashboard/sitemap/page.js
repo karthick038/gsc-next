@@ -884,25 +884,13 @@ function SitemapsTable({ sitemaps, siteUrl, onRefresh, isRefreshing, lastRefresh
                                             <Loader2 className="h-2.5 w-2.5 animate-spin" /> Processing
                                         </span>
                                     ) : sm.healthStatus === "ERROR" ? (
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setReportModal({ isOpen: true, sitemapId: sm._id || sm.path, feedpath: sm.path });
-                                            }}
-                                            className="cursor-pointer inline-flex items-center gap-1.5 text-[10px] font-black text-red-600 uppercase tracking-widest bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-full border border-red-100 dark:border-red-900/50 hover:bg-red-100 transition-colors"
-                                        >
+                                        <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-red-600 uppercase tracking-widest bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-full border border-red-100 dark:border-red-900/50">
                                             <ShieldAlert className="h-3 w-3" /> {sm.localErrorCount} Error{sm.localErrorCount !== 1 ? 's' : ''}
-                                        </button>
+                                        </span>
                                     ) : sm.healthStatus === "ACTIVE" ? (
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setReportModal({ isOpen: true, sitemapId: sm._id || sm.path, feedpath: sm.path });
-                                            }}
-                                            className="cursor-pointer inline-flex items-center gap-1.5 text-[10px] font-black text-green-600 uppercase tracking-widest bg-green-50 dark:bg-green-900/20 px-2.5 py-1 rounded-full border border-green-100 dark:border-green-900/50 hover:bg-green-100 transition-colors"
-                                        >
+                                        <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-green-600 uppercase tracking-widest bg-green-50 dark:bg-green-900/20 px-2.5 py-1 rounded-full border border-green-100 dark:border-green-900/50">
                                             <CheckCircle2 className="h-3 w-3" /> Healthy
-                                        </button>
+                                        </span>
                                     ) : null}
                                 </div>
                             </div>
@@ -1053,14 +1041,19 @@ export default function SitemapPage() {
     const [lastRefreshed, setLastRefreshed] = useState(null);
     const [notification, setNotification] = useState(null);
     const prevSitemapsRef = useRef([]);
+    // Track the URL the user most recently submitted so we only notify for THAT sitemap
+    const recentlySubmittedRef = useRef(null);
 
     // Detect changes in sitemaps to trigger notifications
     useEffect(() => {
         if (sitemaps.length > 0 && prevSitemapsRef.current.length > 0) {
             sitemaps.forEach(currentSm => {
                 const prevSm = prevSitemapsRef.current.find(sm => sm._id === currentSm._id);
+                // Only fire notification for the specific sitemap the user just submitted
+                const isRecentlySubmitted = recentlySubmittedRef.current &&
+                    (currentSm.path === recentlySubmittedRef.current || currentSm.feedpath === recentlySubmittedRef.current);
                 // Detection logic: status changes from PROCESSING to something else
-                if (prevSm && prevSm.healthStatus === "PROCESSING" && currentSm.healthStatus !== "PROCESSING") {
+                if (prevSm && prevSm.healthStatus === "PROCESSING" && currentSm.healthStatus !== "PROCESSING" && isRecentlySubmitted) {
                     if (currentSm.healthStatus === "ERROR") {
                         setNotification({
                             type: "error",
@@ -1068,6 +1061,8 @@ export default function SitemapPage() {
                             debug: currentSm.emailResponse
                         });
                     }
+                    // Clear the ref once notification is resolved (success or error)
+                    recentlySubmittedRef.current = null;
                 }
             });
         }
@@ -1138,14 +1133,17 @@ export default function SitemapPage() {
         if (!activeWebsite || !sitemapUrl.trim() || !validationResult?.valid) return;
         setIsSubmitting(true);
         setSubmitResult(null);
+        const submittedUrl = sitemapUrl.trim();
         try {
             const res = await fetch("/api/sitemap/submit", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ siteUrl: activeWebsite, feedpath: sitemapUrl.trim() }),
+                body: JSON.stringify({ siteUrl: activeWebsite, feedpath: submittedUrl }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Submission failed");
+            // Record which URL was submitted so the notification is scoped to only this one
+            recentlySubmittedRef.current = submittedUrl;
             setSubmitResult({ success: true, message: data.message });
             // Refresh list after successful submission
             setTimeout(() => fetchSitemaps(activeWebsite), 1500);

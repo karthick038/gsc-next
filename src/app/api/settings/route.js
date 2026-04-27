@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import connectDB from "@/lib/db";
 import Settings from "@/models/Settings";
 import { auth } from "@/auth";
-import { checkAndDispatchSitemapBatch } from "@/lib/sitemap-service";
+import { NextResponse } from "next/server";
+import connectDB from "@/lib/db";
+import { checkAndDispatchSitemapBatch, calculateNextDynamicRun } from "@/lib/sitemap-service";
 
 export async function GET() {
     try {
@@ -53,20 +53,53 @@ export async function PATCH(request) {
             emailjsServiceId, emailjsTemplateId, emailjsTemplateIdSuccess, emailjsTemplateIdFailed,
             emailjsPublicKey, emailjsPrivateKey,
             sitemapBatchingEnabled, sitemapLastRunDate,
-            notificationEmail
+            notificationEmail,
+            sitemapInterval, sitemapReferenceTime,
+            reportingEnabled, reportingInterval, reportingReferenceTime
         } = body;
 
         await connectDB();
+        
+        // 1. Calculate new next runs if scheduling changed
+        let nextRunUpdate = {};
+        const currentSettings = await Settings.findOne({});
+        
+        // Sitemap Engine Rescheduling
+        if (sitemapInterval !== undefined || sitemapReferenceTime !== undefined) {
+            const tempSitemapSettings = {
+                ...currentSettings?.toObject(),
+                sitemapInterval: sitemapInterval !== undefined ? sitemapInterval : currentSettings?.sitemapInterval,
+                sitemapReferenceTime: sitemapReferenceTime !== undefined ? sitemapReferenceTime : currentSettings?.sitemapReferenceTime
+            };
+            nextRunUpdate.sitemapNextRunDate = calculateNextDynamicRun(tempSitemapSettings, "sitemap");
+        }
+
+        // Reporting Engine Rescheduling
+        if (reportingInterval !== undefined || reportingReferenceTime !== undefined) {
+             const tempReportingSettings = {
+                ...currentSettings?.toObject(),
+                reportingInterval: reportingInterval !== undefined ? reportingInterval : currentSettings?.reportingInterval,
+                reportingReferenceTime: reportingReferenceTime !== undefined ? reportingReferenceTime : currentSettings?.reportingReferenceTime
+            };
+            nextRunUpdate.reportingNextRunDate = calculateNextDynamicRun(tempReportingSettings, "reporting");
+        }
+
+        // 2. Perform Update
         const updatedSettings = await Settings.findOneAndUpdate(
             {},
             {
-                siteTitle, logoUrl, faviconUrl, logoWidth, logoHeight,
-                emailProvider, brevoApiKey,
-                senderEmail,
-                emailjsServiceId, emailjsTemplateId, emailjsTemplateIdSuccess, emailjsTemplateIdFailed,
-                emailjsPublicKey, emailjsPrivateKey,
-                sitemapBatchingEnabled, sitemapLastRunDate,
-                notificationEmail
+                $set: {
+                    siteTitle, logoUrl, faviconUrl, logoWidth, logoHeight,
+                    emailProvider, brevoApiKey,
+                    senderEmail,
+                    emailjsServiceId, emailjsTemplateId, emailjsTemplateIdSuccess, emailjsTemplateIdFailed,
+                    emailjsPublicKey, emailjsPrivateKey,
+                    sitemapBatchingEnabled, sitemapLastRunDate,
+                    notificationEmail,
+                    sitemapInterval, sitemapReferenceTime,
+                    reportingEnabled, reportingInterval, reportingReferenceTime,
+                    ...nextRunUpdate
+                }
             },
             { upsert: true, new: true }
         );
