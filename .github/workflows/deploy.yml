@@ -35,6 +35,9 @@ jobs:
             echo "After pull"
             git log -1 --oneline
 
+            echo "Cleaning old build"
+            rm -rf .next
+
             echo "Installing dependencies"
             npm install
 
